@@ -1,1 +1,0 @@
-# Tecnicos-Inttelgo
