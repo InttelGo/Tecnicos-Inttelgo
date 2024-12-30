@@ -17,19 +17,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.PassFlied
 import com.inttelgo.tecnicos.components.TextFlieldCustom
+import com.inttelgo.tecnicos.navigation.EnumNavigation
 
 @Preview
 @Composable
 fun LoginPreview() {
-    Login()
+    val navController = rememberNavController()
+
+    NavHost(navController, EnumNavigation.LOGIN.toString()){
+        composable(EnumNavigation.LOGIN.toString()) {
+            Login(navController)
+        }
+    }
 }
 
 @Composable
-fun Login() {
+fun Login(navController: NavController) {
     val userName = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     Scaffold { innerPadding ->
@@ -41,7 +52,11 @@ fun Login() {
             verticalArrangement = Arrangement.Center
         ) {
             //Image
-            Image(painterResource(R.drawable.logo_inttelgo), "InttelGo-Logo.png")
+            Image(painterResource(
+                R.drawable.logo_inttelgo),
+                "InttelGo-Logo.png",
+                modifier = Modifier.width(300.dp)
+            )
             Spacer(Modifier.height(300.dp))
             //Form
             TextFlieldCustom("Text", "Nombre Usuario", userName, 300.dp)
@@ -49,6 +64,7 @@ fun Login() {
             PassFlied(password, "Contraseña", 300.dp)
             Spacer(Modifier.height(50.dp))
             ButtonRainbow("Iniciar Sesion", Modifier.width(300.dp)){
+                navController.navigate(EnumNavigation.HOME.toString())
                 /* TODO */
             }
         }

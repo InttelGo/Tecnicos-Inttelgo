@@ -2,6 +2,7 @@ package com.inttelgo.tecnicos.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -107,5 +108,21 @@ fun ButtonRainbow(text: String, modifier: Modifier, onClick: () -> Unit){
                 )
             )
         }
+    }
+}
+
+@Composable
+fun TextFlieldWithButton(title: String, searchText: MutableState<String>, modifier: Modifier, onClick: () -> Unit){
+    Row {
+        OutlinedTextField(
+            value = searchText.value,
+            onValueChange = { searchText.value = it },
+            label = { Text(text = title) },
+            modifier = modifier
+               .padding(horizontal = 16.dp)
+               .fillMaxWidth()
+               .height(48.dp)
+        )
+        ButtonRainbow(text = "Buscar", modifier = Modifier.padding(start = 8.dp).width(50.dp), onClick = onClick)
     }
 }
