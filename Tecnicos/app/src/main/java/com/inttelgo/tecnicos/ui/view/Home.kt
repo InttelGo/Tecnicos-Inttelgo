@@ -1,6 +1,8 @@
 package com.inttelgo.tecnicos.ui.view
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -21,7 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,8 +35,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.ButtonRainbow
+import com.inttelgo.tecnicos.components.PriorityCard
+import com.inttelgo.tecnicos.components.SearchInput
 import com.inttelgo.tecnicos.components.TargetCustom
-import com.inttelgo.tecnicos.components.TextFlieldWithButton
 import com.inttelgo.tecnicos.navigation.EnumNavigation
 
 @Preview
@@ -51,7 +56,7 @@ fun DefaultPreview() {
 @Composable
 fun Home(navController: NavController){
     val search = remember { mutableStateOf("") }
-    val targetValue = remember { mutableStateOf("Soporte") }
+    val targetValue = remember { mutableStateOf("Procesos") }
     Scaffold (
         topBar = {
             TopAppBar(
@@ -86,7 +91,7 @@ fun Home(navController: NavController){
             Spacer(Modifier.height(12.dp))
             when(targetValue.value){
                 "Soporte" -> Soport(targetValue.value)
-                "Procesos" -> Process(targetValue.value, search)
+                "Procesos" -> Process(targetValue.value, search, navController)
             }
         }
     }
@@ -107,11 +112,18 @@ private fun Soport(title: String){
                 Modifier.fillMaxWidth()
             ){
                 Spacer(Modifier.height(5.dp))
-                Text("$index", Modifier.padding(top=15.dp, start = 15.dp))
+                Row (
+                    Modifier.fillMaxWidth()
+                       .padding(15.dp)
+                ){
+                    Text("$index")
+                    Spacer(Modifier.width(250.dp))
+                    PriorityCard()
+                }
                 Row (Modifier.padding(15.dp).fillMaxWidth()){
                     Text("Icono")
                     Spacer(Modifier.width(15.dp))
-                    Column (){
+                    Column{
                         Text("Id Cliente")
                         Spacer(Modifier.height(5.dp))
                         Text("Nombre Cliente")
@@ -133,6 +145,56 @@ private fun Soport(title: String){
 }
 
 @Composable
-private fun Process(title: String, search: MutableState<String>){
-    TextFlieldWithButton("Buscar", search, Modifier.width(100.dp)) { }
+private fun Process(title: String, search: MutableState<String>, navController: NavController){
+    Column (
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ){
+        SearchInput(search) { }
+        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(1.dp).background(Color.Black).width(350.dp))
+        Spacer(Modifier.height(3.dp))
+        Card (Modifier.fillMaxWidth().padding(20.dp)){
+            Column (Modifier.padding(20.dp)){
+                Text(
+                    "id Proceso",
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "id Cliente",
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "Nombre Cliente",
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "Numero telefonico",
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "Direccion",
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Ultima observacion",
+                )
+                Spacer(Modifier.height(5.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp)
+                        .verticalScroll(rememberScrollState()) // Habilita el desplazamiento horizontal
+                ) {
+                    Text(
+                        text = "Este es un texto de prioridad muy largo que puede deslizarse horizontalmente para ver todo el contenido."
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth()) {
+                    navController.navigate(EnumNavigation.UPLOAD_IMAGE.toString())
+                }
+            }
+        }
+    }
 }

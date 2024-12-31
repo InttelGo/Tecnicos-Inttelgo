@@ -1,11 +1,14 @@
 package com.inttelgo.tecnicos.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -112,17 +115,51 @@ fun ButtonRainbow(text: String, modifier: Modifier, onClick: () -> Unit){
 }
 
 @Composable
-fun TextFlieldWithButton(title: String, searchText: MutableState<String>, modifier: Modifier, onClick: () -> Unit){
-    Row {
+fun SearchInput(search: MutableState<String>, onClick: () -> Unit){
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, shape = RoundedCornerShape(28.dp))
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
         OutlinedTextField(
-            value = searchText.value,
-            onValueChange = { searchText.value = it },
-            label = { Text(text = title) },
-            modifier = modifier
-               .padding(horizontal = 16.dp)
-               .fillMaxWidth()
-               .height(48.dp)
+            value = search.value,
+            onValueChange = { search.value = it},
+            label = { Text(
+                "Buscar",
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = Color.Black,
+                )
+            ) },
+            modifier = Modifier
         )
-        ButtonRainbow(text = "Buscar", modifier = Modifier.padding(start = 8.dp).width(50.dp), onClick = onClick)
+        Box(
+            modifier = Modifier
+                .size(57.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFff9900), // Color naranja oscuro
+                            Color(0xFFff6700)  // Color naranja claro
+                        )
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            contentAlignment = Alignment.Center // Alinea el contenido horizontal y verticalmente
+        ) {
+            IconButton(
+                onClick = onClick
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.search_icon),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(25.dp) // Tamaño del ícono
+                )
+            }
+        }
     }
 }

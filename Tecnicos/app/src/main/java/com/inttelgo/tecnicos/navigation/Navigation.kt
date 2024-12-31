@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.inttelgo.tecnicos.ui.view.Home
 import com.inttelgo.tecnicos.ui.view.Login
+import com.inttelgo.tecnicos.ui.view.UploadImg
 
 @Composable
 fun AppNavigation (){
@@ -17,6 +18,9 @@ fun AppNavigation (){
         }
         composable(EnumNavigation.HOME.toString()) {
             Home(navController)
+        }
+        composable(EnumNavigation.UPLOAD_IMAGE.toString()){
+            UploadImg(navController)
         }
 
     }
