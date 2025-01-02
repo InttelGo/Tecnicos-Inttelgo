@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "72426616309",
+    "project_id": "tecnicos-b4660",
+    "storage_bucket": "tecnicos-b4660.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:72426616309:android:136fcd468737d0ce209cbc",
+        "android_client_info": {
+          "package_name": "com.inttelgo.tecnicos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBid4_Wp4OThSE7q1ZSNS6ckhoiZStAu88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

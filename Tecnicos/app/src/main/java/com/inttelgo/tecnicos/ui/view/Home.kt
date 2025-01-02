@@ -1,7 +1,9 @@
 package com.inttelgo.tecnicos.ui.view
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -27,36 +31,47 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.PriorityCard
 import com.inttelgo.tecnicos.components.SearchInput
 import com.inttelgo.tecnicos.components.TargetCustom
-import com.inttelgo.tecnicos.navigation.EnumNavigation
+import com.inttelgo.tecnicos.components.TextButtonForm
+import com.inttelgo.tecnicos.navigation.Home
+import com.inttelgo.tecnicos.navigation.Login
+import com.inttelgo.tecnicos.navigation.Support
+import com.inttelgo.tecnicos.navigation.UploadImg
 
 @Preview
 @Composable
-fun DefaultPreview() {
+fun HomePreview() {
     val navController = rememberNavController()
 
-    NavHost(navController, EnumNavigation.HOME.toString()){
-        composable(EnumNavigation.HOME.toString()) {
-            Home(navController)
+    NavHost(navController, Home){
+        composable<Home>{
+            HomeScreen (
+                { id,type -> navController.navigate(UploadImg(id,type)) },
+                { id -> navController.navigate(Support(id))}
+            )
         }
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Home(navController: NavController){
+fun HomeScreen(navigateToUploadImage: (id:String, type:String) -> Unit, navigateToSupport: (idSupport: String) -> Unit){
     val search = remember { mutableStateOf("") }
-    val targetValue = remember { mutableStateOf("Procesos") }
+    val targetValue = remember { mutableStateOf("Soporte") }
     Scaffold (
         topBar = {
             TopAppBar(
@@ -90,18 +105,22 @@ fun Home(navController: NavController){
             }
             Spacer(Modifier.height(12.dp))
             when(targetValue.value){
-                "Soporte" -> Soport(targetValue.value)
-                "Procesos" -> Process(targetValue.value, search, navController)
+                "Soporte" -> Soport(targetValue.value, navigateToSupport)
+                "Procesos" -> Process(targetValue.value, search, navigateToUploadImage)
             }
         }
     }
 }
 
 @Composable
-private fun Soport(title: String){
+private fun Soport(title: String, navigateToSupport: (idSupport: String) -> Unit){
     Text(
         title,
-        Modifier.padding(start = 20.dp)
+        Modifier.padding(start = 20.dp),
+        style = TextStyle(
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
     )
 
     LazyColumn (
@@ -109,34 +128,60 @@ private fun Soport(title: String){
     ){
         items(5) { index ->
             Card (
-                Modifier.fillMaxWidth()
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ){
-                Spacer(Modifier.height(5.dp))
-                Row (
-                    Modifier.fillMaxWidth()
-                       .padding(15.dp)
+                Column (
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ){
-                    Text("$index")
-                    Spacer(Modifier.width(250.dp))
-                    PriorityCard()
-                }
-                Row (Modifier.padding(15.dp).fillMaxWidth()){
-                    Text("Icono")
-                    Spacer(Modifier.width(15.dp))
-                    Column{
-                        Text("Id Cliente")
-                        Spacer(Modifier.height(5.dp))
-                        Text("Nombre Cliente")
-                        Spacer(Modifier.height(5.dp))
-                        Text("Numeros Telefonicos")
-                        Spacer(Modifier.height(5.dp))
-                        Text("Direccion: ")
-                        Spacer(Modifier.height(5.dp))
-                        Text("Observacion")
+                    Spacer(Modifier.height(5.dp))
+                    Row (
+                        Modifier.fillMaxWidth()
+                            .padding(15.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ){
+                        Column (
+                            Modifier.width(200.dp)
+                        ){
+                            Text(
+                                "Id Tiecket: $index",
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                        Column (
+                            Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ){
+                            PriorityCard()
+                        }
+                    }
+                    Row (Modifier.padding(15.dp).fillMaxWidth()){
+                        Text("Icono")
+                        Spacer(Modifier.width(15.dp))
+                        Column{
+                            Text("Id Cliente")
+                            Spacer(Modifier.height(5.dp))
+                            Text("Nombre Cliente")
+                            Spacer(Modifier.height(5.dp))
+                            Text("Numeros Telefonicos")
+                            Spacer(Modifier.height(5.dp))
+                            Text("Direccion: ")
+                            Spacer(Modifier.height(5.dp))
+                            Text("Observacion")
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    TextButtonForm("Ver más", true){
+                        navigateToSupport("$index")
                     }
                 }
-                Spacer(Modifier.height(5.dp))
-                ButtonRainbow("Ver más", Modifier.width(70.dp).align(Alignment.CenterHorizontally)) { }
                 Spacer(Modifier.height(15.dp))
             }
             Spacer(Modifier.height(15.dp))
@@ -145,16 +190,23 @@ private fun Soport(title: String){
 }
 
 @Composable
-private fun Process(title: String, search: MutableState<String>, navController: NavController){
+private fun Process(title: String, search: MutableState<String>, navigateToUploadImage: (id: String, type: String) -> Unit){
     Column (
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ){
-        SearchInput(search) { }
+        SearchInput(search) {
+
+        }
         Spacer(Modifier.height(3.dp))
         Spacer(Modifier.height(1.dp).background(Color.Black).width(350.dp))
         Spacer(Modifier.height(3.dp))
-        Card (Modifier.fillMaxWidth().padding(20.dp)){
+        Card (
+            Modifier.fillMaxWidth().padding(20.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ){
             Column (Modifier.padding(20.dp)){
                 Text(
                     "id Proceso",
@@ -183,7 +235,7 @@ private fun Process(title: String, search: MutableState<String>, navController: 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(250.dp)
+                        .height(150.dp)
                         .verticalScroll(rememberScrollState()) // Habilita el desplazamiento horizontal
                 ) {
                     Text(
@@ -191,9 +243,7 @@ private fun Process(title: String, search: MutableState<String>, navController: 
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth()) {
-                    navController.navigate(EnumNavigation.UPLOAD_IMAGE.toString())
-                }
+                ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth()) { navigateToUploadImage("id Proceso", "Proceso") }
             }
         }
     }
