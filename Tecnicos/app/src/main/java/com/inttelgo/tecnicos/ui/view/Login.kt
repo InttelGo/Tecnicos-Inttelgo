@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Card
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -22,27 +26,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.inttelgo.tecnicos.R
+import com.inttelgo.tecnicos.components.AlertCard
 import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.PassFlied
 import com.inttelgo.tecnicos.components.TextFlieldCustom
-import com.inttelgo.tecnicos.navigation.EnumNavigation
+import com.inttelgo.tecnicos.ui.viewmodel.LoginViewModel
 
 @Preview
 @Composable
-fun LoginPreview() {
-    val navController = rememberNavController()
-
-    NavHost(navController, EnumNavigation.LOGIN.toString()){
-        composable(EnumNavigation.LOGIN.toString()) {
-            Login(navController)
-        }
-    }
+fun LoginScreenPreview() {
+    LoginScreen {  }
 }
 
 @Composable
-fun Login(navController: NavController) {
+fun LoginScreen(navigateToHome: () -> Unit) {
+    val viewModelL: LoginViewModel= remember { LoginViewModel() }
     val userName = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
+    val isLoggedIn by viewModelL.isLoggedIn.collectAsState()
+    val errorMessage by viewModelL.errorMessage.collectAsState()
     Scaffold { innerPadding ->
         Column  (
             modifier = Modifier
@@ -58,14 +60,18 @@ fun Login(navController: NavController) {
                 modifier = Modifier.width(300.dp)
             )
             Spacer(Modifier.height(300.dp))
+            errorMessage?.let {
+                AlertCard(errorMessage!!)
+                Spacer(Modifier.height(10.dp))
+            }
             //Form
-            TextFlieldCustom("Text", "Nombre Usuario", userName, 300.dp)
+            TextFlieldCustom("Nombre Usuario", userName, 300.dp)
             Spacer(Modifier.height(5.dp))
             PassFlied(password, "Contraseña", 300.dp)
             Spacer(Modifier.height(50.dp))
             ButtonRainbow("Iniciar Sesion", Modifier.width(300.dp)){
-                navController.navigate(EnumNavigation.HOME.toString())
-                /* TODO */
+                viewModelL.loginWithEmail(userName.value, password.value)
+                navigateToHome()
             }
         }
     }
