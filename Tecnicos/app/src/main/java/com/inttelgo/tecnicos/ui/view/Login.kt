@@ -45,6 +45,7 @@ fun LoginScreen(navigateToHome: () -> Unit) {
     val password = remember { mutableStateOf("") }
     val isLoggedIn by viewModelL.isLoggedIn.collectAsState()
     val errorMessage by viewModelL.errorMessage.collectAsState()
+    val userData by viewModelL.userData.collectAsState()
     Scaffold { innerPadding ->
         Column  (
             modifier = Modifier
@@ -70,8 +71,7 @@ fun LoginScreen(navigateToHome: () -> Unit) {
             PassFlied(password, "Contraseña", 300.dp)
             Spacer(Modifier.height(50.dp))
             ButtonRainbow("Iniciar Sesion", Modifier.width(300.dp)){
-                viewModelL.loginWithEmail(userName.value, password.value)
-                navigateToHome()
+                viewModelL.loginWithEmail(userName.value, password.value,  navigateToHome)
             }
         }
     }
