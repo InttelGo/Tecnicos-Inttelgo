@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.PriorityCard
@@ -47,7 +47,6 @@ import com.inttelgo.tecnicos.components.SearchInput
 import com.inttelgo.tecnicos.components.TargetCustom
 import com.inttelgo.tecnicos.components.TextButtonForm
 import com.inttelgo.tecnicos.navigation.Home
-import com.inttelgo.tecnicos.navigation.Login
 import com.inttelgo.tecnicos.navigation.Support
 import com.inttelgo.tecnicos.navigation.UploadImg
 
@@ -55,7 +54,6 @@ import com.inttelgo.tecnicos.navigation.UploadImg
 @Composable
 fun HomePreview() {
     val navController = rememberNavController()
-
     NavHost(navController, Home){
         composable<Home>{
             HomeScreen (
@@ -70,6 +68,7 @@ fun HomePreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navigateToUploadImage: (id:String, type:String) -> Unit, navigateToSupport: (idSupport: String) -> Unit){
+
     val search = remember { mutableStateOf("") }
     val targetValue = remember { mutableStateOf("Soporte") }
     Scaffold (
@@ -122,7 +121,6 @@ private fun Soport(title: String, navigateToSupport: (idSupport: String) -> Unit
             fontWeight = FontWeight.Bold
         )
     )
-
     LazyColumn (
         Modifier.padding(20.dp).height(650.dp)
     ){
