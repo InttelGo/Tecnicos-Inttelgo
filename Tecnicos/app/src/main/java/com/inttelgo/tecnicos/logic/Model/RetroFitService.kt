@@ -11,6 +11,16 @@ interface RetroFitService {
         @Url url: String
     ): RemoteUserResult
 
+    @GET
+    suspend fun getProcessData(
+        @Url url: String
+    ): ProcessResult
+
+    @GET
+    suspend fun getTickets(
+        @Url url: String
+    ):TicketResult
+
     companion object {
         fun encodeToBase64(url: String): String = Base64.encodeToString(url.toByteArray(), Base64.DEFAULT)
     }

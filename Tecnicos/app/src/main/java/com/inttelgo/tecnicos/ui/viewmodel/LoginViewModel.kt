@@ -3,12 +3,13 @@ package com.inttelgo.tecnicos.ui.viewmodel
 
 
 import android.annotation.SuppressLint
-import android.util.Log
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inttelgo.tecnicos.logic.Model.Data
 import com.inttelgo.tecnicos.logic.Model.RetroFitService
 import com.inttelgo.tecnicos.logic.RetroFitServiceFactory
+import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -24,7 +25,7 @@ class LoginViewModel : ViewModel() {
     val userData: StateFlow<Data?> = _userData
 
     @SuppressLint("NewApi")
-    fun loginWithEmail(username: String, password: String, navigateToHome: () -> Unit) {
+    fun loginWithEmail(context: Context, username: String, password: String, navigateToHome: () -> Unit) {
         if (username.isEmpty() || password.isEmpty()) {
             _errorMessage.value = "Todos los campos son requeridos"
         } else {
@@ -34,10 +35,27 @@ class LoginViewModel : ViewModel() {
                     val result = service.getUserData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&username=$username&password=$password")
                     _isLoggedIn.value = true
                     _userData.value = result.data
+                    val userPreferences = UserPreferences(context)
+                    userPreferences.saveUser(result.data.id_usuario)
                     navigateToHome()
                 } catch (e: Exception) {
                     _errorMessage.value = e.message }
             }
+        }
+    }
+
+    fun isLoggedUser(navigateToLogin: () -> Unit, id: String?) {
+        if(id==null){
+            navigateToLogin()
+        }
+        val service = RetroFitServiceFactory.makeRetroFitService()
+        viewModelScope.launch {
+            try {
+                val result = service.getUserData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&id=${id}")
+                _isLoggedIn.value = true
+                _userData.value = result.data
+            } catch (e: Exception) {
+                _errorMessage.value = e.message }
         }
     }
 }
