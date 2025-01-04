@@ -1,5 +1,6 @@
 package com.inttelgo.tecnicos.navigation
 
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -15,18 +16,20 @@ import com.inttelgo.tecnicos.ui.view.UploadImgScreen
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AppNavigation (){
+fun AppNavigation (context: Context){
     val navController = rememberNavController()
 
-    NavHost(navController, Login){
+    NavHost(navController, Home){
         composable<Login> {
-            Log.d("Login", "Prueba 1")
-            LoginScreen { navController.navigate(Home) }
+            LoginScreen (context){ navController.navigate(Home){
+                popUpTo<Home>{inclusive=true}
+            } }
         }
         composable<Home>{
-            HomeScreen (
+            HomeScreen (context,
                 { id,type -> navController.navigate(UploadImg(id,type)) },
-                { id -> navController.navigate(Support(id))}
+                { id -> navController.navigate(Support(id))},
+                { navController.navigate(Login)}
             )
         }
         composable<UploadImg>{ backStackEntry ->

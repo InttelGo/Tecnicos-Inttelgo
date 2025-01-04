@@ -1,5 +1,6 @@
 package com.inttelgo.tecnicos.ui.view
 
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,20 +33,13 @@ import com.inttelgo.tecnicos.components.PassFlied
 import com.inttelgo.tecnicos.components.TextFlieldCustom
 import com.inttelgo.tecnicos.ui.viewmodel.LoginViewModel
 
-@Preview
-@Composable
-fun LoginScreenPreview() {
-    LoginScreen {  }
-}
 
 @Composable
-fun LoginScreen(navigateToHome: () -> Unit) {
+fun LoginScreen(context: Context,navigateToHome: () -> Unit) {
     val viewModelL: LoginViewModel= remember { LoginViewModel() }
     val userName = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
-    val isLoggedIn by viewModelL.isLoggedIn.collectAsState()
     val errorMessage by viewModelL.errorMessage.collectAsState()
-    val userData by viewModelL.userData.collectAsState()
     Scaffold { innerPadding ->
         Column  (
             modifier = Modifier
@@ -71,7 +65,7 @@ fun LoginScreen(navigateToHome: () -> Unit) {
             PassFlied(password, "Contraseña", 300.dp)
             Spacer(Modifier.height(50.dp))
             ButtonRainbow("Iniciar Sesion", Modifier.width(300.dp)){
-                viewModelL.loginWithEmail(userName.value, password.value,  navigateToHome)
+                viewModelL.loginWithEmail(context, userName.value, password.value,  navigateToHome)
             }
         }
     }
