@@ -44,10 +44,9 @@ class HomeViewModel : ViewModel(){
         val service = RetroFitServiceFactory.makeRetroFitService()
         viewModelScope.launch {
             try {
-                val result = service.getTickets("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/tickets.php")}")
+                val result = service.getTickets("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}")
                 _checkProcess.value = result.success
                 _tickets.value = result.tickets
-                Log.d("ticketsList", "Tickets: ${result.tickets}")
             }catch ( e: Exception ){
                 _errorMessage.value = e.message
             }

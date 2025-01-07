@@ -3,6 +3,7 @@ package com.inttelgo.tecnicos.components
 import android.annotation.SuppressLint
 import android.graphics.Color.parseColor
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +41,7 @@ import coil.compose.AsyncImage
 import com.inttelgo.tecnicos.R
 import java.time.Duration
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun TargetCustom(content: String, isPrimary: Boolean,onClick: () -> Unit) {
@@ -76,8 +78,9 @@ fun TargetCustom(content: String, isPrimary: Boolean,onClick: () -> Unit) {
 
 @SuppressLint("NewApi")
 @Composable
-fun PriorityCard(){
-    val inputDate = LocalDateTime.of(2024, 12, 31, 18, 0)
+fun PriorityCard(fecha_hora: String){
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    val inputDate = LocalDateTime.parse(fecha_hora, formatter)
 
     // Calcular la prioridad con base en la diferencia de horas
     val (priorityText, colorHex) = when (calculateHourDifference(inputDate)) {
@@ -114,11 +117,19 @@ fun PriorityCard(){
 }
 
 @SuppressLint("NewApi")
-private  fun calculateHourDifference(inputDate: LocalDateTime): Long {
+private fun calculateHourDifference(inputDate: LocalDateTime): Long {
     val currentDate = LocalDateTime.now()
-    val duration = Duration.between(currentDate, inputDate)
+
+    // Manejar diferencias de zona horaria si es necesario
+    val duration = if (inputDate.isAfter(currentDate)) {
+        Duration.between(currentDate, inputDate)
+    } else {
+        Duration.between(inputDate, currentDate)
+    }
+    Log.d("hour_diference", duration.toHours().toString())
     return duration.toHours()
 }
+
 
 @Composable
 fun ButtonWithText(text: String, idIcon: Int, s: Dp, onClick: () -> Unit){
@@ -148,6 +159,7 @@ fun ButtonWithText(text: String, idIcon: Int, s: Dp, onClick: () -> Unit){
 @Composable
 fun ImagePreview(imageUri: MutableState<Uri?>){
     AlertDialog(
+        containerColor = Color.White,
         onDismissRequest = {
             imageUri.value = null
         },

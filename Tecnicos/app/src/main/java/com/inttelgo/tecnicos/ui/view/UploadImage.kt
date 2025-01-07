@@ -1,14 +1,13 @@
 package com.inttelgo.tecnicos.ui.view
 
+import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,9 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,41 +33,36 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.ButtonRainbow
-import com.inttelgo.tecnicos.components.ButtonWithText
-import com.inttelgo.tecnicos.components.ImagePreview
 import com.inttelgo.tecnicos.components.OpenCameraScreen
 import com.inttelgo.tecnicos.components.PhotoSelectorView
 import com.inttelgo.tecnicos.components.TextFlieldCustom
+import com.inttelgo.tecnicos.ui.viewmodel.UploadImageViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UploadImgScreen(id: String, type: String, navigateToHome: () -> Unit) {
+fun UploadImgScreen(id: String, type: String, context: Context,navigateToHome: () -> Unit) {
+    val viewModelI:UploadImageViewModel = remember { UploadImageViewModel() }
     val selectedImages = remember { mutableStateOf<List<Uri?>>(emptyList()) }
-    val imageUri = remember { mutableStateOf<Uri?>(null) }
     val imageSelected = remember { mutableStateOf<Uri?>(null)}
     val observation = remember { mutableStateOf("") }
+    val showDialog = remember { mutableStateOf(false) }
     Scaffold (
         topBar = {
             TopAppBar(
@@ -80,7 +77,7 @@ fun UploadImgScreen(id: String, type: String, navigateToHome: () -> Unit) {
                 },
                 actions = {
                     Text(
-                        "${type} : ${id}",
+                        "$type : $id",
                         style = TextStyle(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
@@ -101,38 +98,15 @@ fun UploadImgScreen(id: String, type: String, navigateToHome: () -> Unit) {
             Text("Imagenes")
             LazyRow {
                item {
-                   CardWithBottomSheet(imageUri,selectedImages)
+                   CardWithBottomSheet(selectedImages)
                }
-                item {
-                    if(imageUri.value != null){
-                        imageUri.value.let { uri ->
-                            Card(
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .size(80.dp)
-                                    .clickable {
-                                        imageSelected.value = uri
-                                    },
-                                shape = RoundedCornerShape(16.dp),
-                                elevation = CardDefaults.cardElevation(8.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White)
-                            ) {
-                                AsyncImage(
-                                    model = uri,
-                                    contentDescription = "Imagen capturada",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
-                        }
-                    }
-                }
                 items(selectedImages.value) { uri ->
                     Card(
                         modifier = Modifier
                             .padding(10.dp)
                             .size(80.dp)
                             .clickable(onClick = {
+                                showDialog.value = true
                                imageSelected.value = uri
                             }),
                         shape = RoundedCornerShape(16.dp),
@@ -146,22 +120,71 @@ fun UploadImgScreen(id: String, type: String, navigateToHome: () -> Unit) {
                             contentScale = ContentScale.Fit
                         )
                     }
-                    if(imageSelected.value != null){
-                        ImagePreview(imageSelected)
-                    }
 
                 }
-           }
+            }
+
             TextFlieldCustom("Observacion", observation, 350.dp)
             Spacer(Modifier.height(50.dp))
             ButtonRainbow("Aceptar", Modifier.fillMaxWidth()) {
-                navigateToHome()
+                if (selectedImages.value.isNotEmpty()) {
+                    viewModelI.uploadImage(context, selectedImages, onResult = {})
+                }
             }
             Spacer(Modifier.height(25.dp))
             ButtonRainbow("Cancelar", Modifier.fillMaxWidth()) {
                 navigateToHome()
             }
+            ImageAlertDialog(imageSelected, showDialog)
         }
+    }
+}
+
+@Composable
+fun ImageAlertDialog(imageSelected: MutableState<Uri?>, showDialog: MutableState<Boolean>, title: String = "Imágene") {
+    if (showDialog.value) {
+        AlertDialog(
+            containerColor = Color.White,
+            onDismissRequest = { showDialog.value = false },
+            title = {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Black
+                )
+            },
+            text = {
+                LazyColumn(
+                    Modifier
+                        .fillMaxWidth()
+                ) {
+                    item{
+                        Box(
+                            modifier = Modifier
+                                .width(350.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color.White)
+                        ) {
+                            AsyncImage(
+                                model = imageSelected.value,
+                                contentDescription = "Imagen",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+
+            },
+            confirmButton = {
+                Button(onClick = { showDialog.value = false }) {
+                    Text(text = "Cerrar")
+                }
+            }
+        )
     }
 }
 
@@ -169,7 +192,6 @@ fun UploadImgScreen(id: String, type: String, navigateToHome: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardWithBottomSheet(
-    imageUri: MutableState<Uri?>,
     selectedImages: MutableState<List<Uri?>>,
 ) {
     // Estado para controlar la visibilidad del Bottom Sheet
@@ -214,7 +236,7 @@ fun CardWithBottomSheet(
                     .padding(16.dp),
             ) {
                 //Take a picture
-                OpenCameraScreen(imageUri)
+                OpenCameraScreen(selectedImages)
                 Spacer(Modifier.width(10.dp))
                 //Select image to galery
                 PhotoSelectorView(10, selectedImages)
@@ -222,7 +244,3 @@ fun CardWithBottomSheet(
         }
     }
 }
-
-
-
-

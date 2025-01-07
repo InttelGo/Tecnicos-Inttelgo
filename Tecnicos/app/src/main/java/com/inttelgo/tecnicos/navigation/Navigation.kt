@@ -34,7 +34,7 @@ fun AppNavigation (context: Context){
         }
         composable<UploadImg>{ backStackEntry ->
             val detail: UploadImg = backStackEntry.toRoute()
-            UploadImgScreen(detail.id, detail.type){
+            UploadImgScreen(detail.id, detail.type, context){
                 navController.navigate(Home){
                     popUpTo<Home>{inclusive=true}
                 }

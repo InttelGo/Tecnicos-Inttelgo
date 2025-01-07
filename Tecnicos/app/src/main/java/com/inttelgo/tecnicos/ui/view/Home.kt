@@ -20,11 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -108,7 +110,11 @@ private fun Soport(
     title: String,
     navigateToSupport: (idSupport: String) -> Unit
 ){
+    LaunchedEffect(Unit) {
+        viewModelH.ticketsList()
+    }
     val tickets by viewModelH.tickets.collectAsState()
+    val checkProcess by viewModelH.checkProcess.collectAsState()
     Text(
         title,
         Modifier.padding(start = 20.dp),
@@ -117,68 +123,78 @@ private fun Soport(
             fontWeight = FontWeight.Bold
         )
     )
-    LazyColumn (
-        Modifier.padding(20.dp).height(650.dp)
-    ){
-        items(tickets!!) { ticket ->
-            Card (
-                Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ){
-                Column (
+    if(!checkProcess){
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    }else{
+        LazyColumn (
+            Modifier.padding(20.dp).height(650.dp)
+        ){
+            items(tickets!!) { ticket ->
+                Card (
                     Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ){
-                    Spacer(Modifier.height(5.dp))
-                    Row (
-                        Modifier.fillMaxWidth()
-                            .padding(15.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
+                    Column (
+                        Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ){
-                        Column (
-                            Modifier.width(200.dp)
+                        Spacer(Modifier.height(5.dp))
+                        Row (
+                            Modifier.fillMaxWidth()
+                                .padding(15.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
                         ){
-                            Text(
-                                "Id Tiecket: ${ticket.id_ticket}",
-                                style = TextStyle(
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
+                            Column (
+                                Modifier.width(200.dp)
+                            ){
+                                Text(
+                                    "Id Tiecket: ${ticket.id_ticket}",
+                                    style = TextStyle(
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 )
-                            )
+                            }
+                            Column (
+                                Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ){
+                                PriorityCard(ticket.fecha_hora)
+                            }
                         }
-                        Column (
-                            Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ){
-                            PriorityCard()
+                        Row (Modifier.padding(15.dp).fillMaxWidth()){
+                            Text("Icono")
+                            Spacer(Modifier.width(15.dp))
+                            Column{
+                                Spacer(Modifier.height(5.dp))
+                                Text("Cliente: ${ticket.cliente.nombre_1} ${ticket.cliente.apellido_1}")
+                                Spacer(Modifier.height(5.dp))
+                                Text("Numeros Telefonicos: " +
+                                        ticket.cliente.telefono_1
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                Text("Direccion: ${ticket.cliente.direccion}")
+                                Spacer(Modifier.height(5.dp))
+                                Text("Observacion: ${ticket.observacion_u}")
+                            }
+                        }
+                        Spacer(Modifier.height(5.dp))
+                        TextButtonForm("Ver más", true){
+                            navigateToSupport(ticket.id_ticket)
                         }
                     }
-                    Row (Modifier.padding(15.dp).fillMaxWidth()){
-                        Text("Icono")
-                        Spacer(Modifier.width(15.dp))
-                        Column{
-                            Text("Id Cliente")
-                            Spacer(Modifier.height(5.dp))
-                            Text("Nombre Cliente")
-                            Spacer(Modifier.height(5.dp))
-                            Text("Numeros Telefonicos")
-                            Spacer(Modifier.height(5.dp))
-                            Text("Direccion: ")
-                            Spacer(Modifier.height(5.dp))
-                            Text("Observacion")
-                        }
-                    }
-                    Spacer(Modifier.height(5.dp))
-                    TextButtonForm("Ver más", true){
-                        navigateToSupport("${ticket.id_ticket}")
-                    }
+                    Spacer(Modifier.height(15.dp))
                 }
                 Spacer(Modifier.height(15.dp))
             }
-            Spacer(Modifier.height(15.dp))
         }
     }
 }

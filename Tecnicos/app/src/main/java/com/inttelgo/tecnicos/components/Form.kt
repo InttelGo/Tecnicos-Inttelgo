@@ -2,7 +2,6 @@ package com.inttelgo.tecnicos.components
 
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,22 +9,18 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -154,7 +149,7 @@ fun SearchInput(search: MutableState<String>, onClick: () -> Unit){
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun OpenCameraScreen(photoUri: MutableState<Uri?>) {
+fun OpenCameraScreen(photoUri: MutableState<List<Uri?>>) {
     val context = LocalContext.current
     val photoFile = remember { File(context.cacheDir, "${LocalDateTime.now()}.jpg") }
     // Uri para el archivo (utilizando FileProvider)
@@ -167,9 +162,7 @@ fun OpenCameraScreen(photoUri: MutableState<Uri?>) {
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
             if (success) {
-                photoUri.value = photoUriProvider
-            } else {
-                photoUri.value = null
+                photoUri.value += listOf(photoUriProvider)
             }
         }
     )
@@ -199,7 +192,7 @@ fun PhotoSelectorView(
     val galleryPermissionState = remember { mutableStateOf(false) }
     val singlePhotoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> selectedImages.value = listOf(uri) }
+        onResult = { uri -> selectedImages.value += listOf(uri) }
     )
     val multiplePhotoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = if (maxSelectionCount > 1) {
@@ -207,7 +200,7 @@ fun PhotoSelectorView(
         } else {
             2
         }),
-        onResult = { uris -> selectedImages.value = uris }
+        onResult = { uris -> selectedImages.value += uris }
     )
 
     val permissionLauncher = rememberLauncherForActivityResult(
