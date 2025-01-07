@@ -21,6 +21,21 @@ interface RetroFitService {
         @Url url: String
     ):TicketResult
 
+    @GET
+    suspend fun getSupport(
+        @Url url: String
+    ):SupportResult
+
+    @GET
+    suspend fun getObs(
+        @Url url: String
+    ): resultHistory
+
+    @GET
+    suspend fun getPictures(
+        @Url url: String
+    ): PictureResult
+
     companion object {
         fun encodeToBase64(url: String): String = Base64.encodeToString(url.toByteArray(), Base64.DEFAULT)
     }
