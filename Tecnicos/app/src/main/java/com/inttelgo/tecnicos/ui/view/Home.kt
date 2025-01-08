@@ -206,6 +206,7 @@ private fun Process(
     navigateToUploadImage: (id: String, type: String) -> Unit
 ){
     val process = viewModelH.processData.collectAsState()
+    val checkProcessData = viewModelH.checkProcessData.collectAsState()
     val search = remember { mutableStateOf("") }
     Column (
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -217,7 +218,7 @@ private fun Process(
         Spacer(Modifier.height(3.dp))
         Spacer(Modifier.height(1.dp).background(Color.Black).width(350.dp))
         Spacer(Modifier.height(3.dp))
-        if(process.value != null){
+        if(checkProcessData.value){
             Card (
                 Modifier.fillMaxWidth().padding(20.dp),
                 shape = RoundedCornerShape(16.dp),
@@ -256,7 +257,8 @@ private fun Process(
                         )
                     }
                     Spacer(Modifier.height(10.dp))
-                    ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth()) { navigateToUploadImage("id Proceso", "Proceso") }
+                    ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth()) { navigateToUploadImage(
+                        process.value!!.id_instalacion, "Proceso") }
                 }
             }
         }

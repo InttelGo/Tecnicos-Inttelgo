@@ -157,39 +157,6 @@ fun ButtonWithText(text: String, idIcon: Int, s: Dp, onClick: () -> Unit){
 }
 
 @Composable
-fun ImagePreview(imageUri: MutableState<Uri?>){
-    AlertDialog(
-        containerColor = Color.White,
-        onDismissRequest = {
-            imageUri.value = null
-        },
-        title = { Text("Imagen seleccionada") },
-        text = {
-            Box(
-                modifier = Modifier
-                   .width(350.dp)
-                   .clip(RoundedCornerShape(10.dp))
-                   .background(Color.White)
-            ) {
-                AsyncImage(
-                    model = imageUri.value,
-                    contentDescription = "Imagen",
-                    modifier = Modifier
-                       .fillMaxSize()
-                       .padding(16.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        },
-        confirmButton = {
-            ButtonRainbow("Aceptar", Modifier.width(50.dp)) {
-                imageUri.value = null
-            }
-        }
-    )
-}
-
-@Composable
 fun FloatingButtons(id: String, navigateToUploadImage: (id: String, type: String) -> Unit){
     val isMenuExpanded = remember{ mutableStateOf(false) }
     Column(

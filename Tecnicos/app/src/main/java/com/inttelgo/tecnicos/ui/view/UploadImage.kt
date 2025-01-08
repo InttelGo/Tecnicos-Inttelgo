@@ -4,6 +4,10 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,10 +38,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -52,17 +59,20 @@ import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.OpenCameraScreen
 import com.inttelgo.tecnicos.components.PhotoSelectorView
 import com.inttelgo.tecnicos.components.TextFlieldCustom
+import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.ui.viewmodel.UploadImageViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UploadImgScreen(id: String, type: String, context: Context,navigateToHome: () -> Unit) {
+fun UploadImgScreen(id: String, type: String, context: Context,navigateToHome: () -> Unit, navigateToUp: () -> Unit) {
     val viewModelI:UploadImageViewModel = remember { UploadImageViewModel() }
     val selectedImages = remember { mutableStateOf<List<Uri?>>(emptyList()) }
     val imageSelected = remember { mutableStateOf<Uri?>(null)}
     val observation = remember { mutableStateOf("") }
     val showDialog = remember { mutableStateOf(false) }
+    val success = remember { mutableStateOf(false)}
+    AnimatedSuccessAlert(success, navigateToUp)
     Scaffold (
         topBar = {
             TopAppBar(
@@ -128,7 +138,12 @@ fun UploadImgScreen(id: String, type: String, context: Context,navigateToHome: (
             Spacer(Modifier.height(50.dp))
             ButtonRainbow("Aceptar", Modifier.fillMaxWidth()) {
                 if (selectedImages.value.isNotEmpty()) {
-                    viewModelI.uploadImage(context, selectedImages, onResult = {})
+                    val userPreferences = UserPreferences(context)
+                    userPreferences.getId()?.let {
+                        viewModelI.uploadImage(context, selectedImages, observation, success, id, type,
+                            it
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(25.dp))
@@ -243,4 +258,50 @@ fun CardWithBottomSheet(
             }
         }
     }
+}
+
+@Composable
+fun AnimatedSuccessAlert(showDialog: MutableState<Boolean>, navigateToUp: () -> Unit) {
+    if (showDialog.value) {
+        AlertDialog(
+            containerColor = Color.White,
+            onDismissRequest = { showDialog.value = false },
+            title = { Text("Observacion creada con exito!") },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AnimatedIcon()
+                    Text("Tu transaccion ha sido un exito.")
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showDialog.value = false
+                    navigateToUp()
+                }) {
+                    Text("Aceptar")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun AnimatedIcon() {
+    val infiniteTransition = rememberInfiniteTransition()
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000)
+        ), label = ""
+    )
+
+    Icon(
+        painter = painterResource(id = R.drawable.check_small_icon),
+        contentDescription = "Success",
+        modifier = Modifier.size(70.dp).scale(scale),
+        tint = Color.Green
+    )
 }

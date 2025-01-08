@@ -36,6 +36,11 @@ interface RetroFitService {
         @Url url: String
     ): PictureResult
 
+    @GET
+    suspend fun setObs(
+        @Url url: String
+    ): Int
+
     companion object {
         fun encodeToBase64(url: String): String = Base64.encodeToString(url.toByteArray(), Base64.DEFAULT)
     }
