@@ -2,7 +2,6 @@ package com.inttelgo.tecnicos.navigation
 
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
@@ -34,11 +33,21 @@ fun AppNavigation (context: Context){
         }
         composable<UploadImg>{ backStackEntry ->
             val detail: UploadImg = backStackEntry.toRoute()
-            UploadImgScreen(detail.id, detail.type, context){
-                navController.navigate(Home){
-                    popUpTo<Home>{inclusive=true}
+            UploadImgScreen(detail.id, detail.type, context,{
+                    navController.navigate(Home){
+                        popUpTo<Home>{inclusive=true}
+                    }
+                },
+                {
+                    if(detail.type == "Soporte"){
+                        navController.navigateUp()
+                    }else{
+                        navController.navigate(Home){
+                            popUpTo<Home>{inclusive=true}
+                        }
+                    }
                 }
-            }
+            )
         }
         composable<Support>{ backStackEntry ->
             val detail: Support = backStackEntry.toRoute()

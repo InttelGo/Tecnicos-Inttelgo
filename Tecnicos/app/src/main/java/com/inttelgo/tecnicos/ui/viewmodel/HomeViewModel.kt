@@ -16,6 +16,9 @@ class HomeViewModel : ViewModel(){
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
+    private val _checkProcessData = MutableStateFlow(false)
+    val checkProcessData: StateFlow<Boolean> = _checkProcessData
+
     private val _processData = MutableStateFlow<Proceso?>(null)
     val processData: StateFlow<Proceso?> =_processData
 
@@ -30,7 +33,7 @@ class HomeViewModel : ViewModel(){
         viewModelScope.launch {
             try {
                 val result = service.getProcessData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&search=${search}")
-                _checkProcess.value = result.success
+                _checkProcessData.value = result.success
                 _processData.value = result.proceso
                 Log.d("searchProcess", "sucess: ${result.success}")
                 Log.d("searchProcess", "Process: ${result.proceso}")
@@ -44,9 +47,12 @@ class HomeViewModel : ViewModel(){
         val service = RetroFitServiceFactory.makeRetroFitService()
         viewModelScope.launch {
             try {
+                Log.d("searchProcess", "sucess: ${RetroFitService.encodeToBase64("pages/ticket.php")}")
                 val result = service.getTickets("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}")
                 _checkProcess.value = result.success
                 _tickets.value = result.tickets
+                Log.d("searchProcess", "sucess: ${result.success}")
+                Log.d("searchProcess", "Process: ${result.tickets}")
             }catch ( e: Exception ){
                 _errorMessage.value = e.message
             }

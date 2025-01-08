@@ -17,9 +17,6 @@ import kotlinx.coroutines.launch
 class LoginViewModel : ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
-    // Login authentication
-    private val _isLoggedIn = MutableStateFlow(false)
-    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
     private val _userData = MutableStateFlow<Data?>(null)
     val userData: StateFlow<Data?> = _userData
@@ -33,7 +30,6 @@ class LoginViewModel : ViewModel() {
             viewModelScope.launch {
                 try {
                     val result = service.getUserData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&username=$username&password=$password")
-                    _isLoggedIn.value = true
                     _userData.value = result.data
                     val userPreferences = UserPreferences(context)
                     userPreferences.saveUser(result.data.id_usuario)
@@ -52,7 +48,6 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val result = service.getUserData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&id=${id}")
-                _isLoggedIn.value = true
                 _userData.value = result.data
             } catch (e: Exception) {
                 _errorMessage.value = e.message }
