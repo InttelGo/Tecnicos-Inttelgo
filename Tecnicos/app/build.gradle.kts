@@ -63,6 +63,14 @@ dependencies {
     implementation (libs.retrofit)
     implementation (libs.converter.gson)
 
+    //Maps SDK
+    implementation(libs.play.services.maps)
+    implementation (libs.play.services.location)
+
+    //Corrutine
+
+    implementation(libs.androidx.lifecycle.viewmodel)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

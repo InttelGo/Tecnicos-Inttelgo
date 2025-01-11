@@ -40,6 +40,10 @@ interface RetroFitService {
     suspend fun setObs(
         @Url url: String
     ): Int
+    @GET
+    suspend fun getBarrios(
+        @Url url: String
+    ): BarrioResult
 
     companion object {
         fun encodeToBase64(url: String): String = Base64.encodeToString(url.toByteArray(), Base64.DEFAULT)

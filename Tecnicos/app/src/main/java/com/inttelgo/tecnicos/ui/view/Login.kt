@@ -64,7 +64,7 @@ fun LoginScreen(context: Context,navigateToHome: () -> Unit) {
             Spacer(Modifier.height(5.dp))
             PassFlied(password, "Contraseña", 300.dp)
             Spacer(Modifier.height(50.dp))
-            ButtonRainbow("Iniciar Sesion", Modifier.width(300.dp)){
+            ButtonRainbow("Iniciar Sesion", Modifier.width(300.dp), true){
                 viewModelL.loginWithEmail(context, userName.value, password.value,  navigateToHome)
             }
         }

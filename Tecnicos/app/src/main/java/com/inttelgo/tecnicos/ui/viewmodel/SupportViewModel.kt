@@ -17,6 +17,9 @@ class SupportViewModel : ViewModel(){
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
+    private val _warningMessage = MutableStateFlow<String?>(null)
+    val warningMessage: StateFlow<String?> = _warningMessage
+
     private val _supportCheck = MutableStateFlow<Boolean>(false)
     val supportCheck: StateFlow<Boolean> = _supportCheck
 
@@ -40,6 +43,7 @@ class SupportViewModel : ViewModel(){
         viewModelScope.launch {
             try {
                 Log.d("SupportList", idTicket)
+                Log.d("SupportList","https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}&id=$idTicket")
                 val result = service.getSupport("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}&id=$idTicket")
                 _supportCheck.value = result.success
                 _supportData.value = result.ticket
@@ -57,6 +61,12 @@ class SupportViewModel : ViewModel(){
                 val result = service.getObs("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/obs_ticket.php")}&id=$idTicket")
                 _listCheck.value = result.sucess
                 _observationList.value = result.obs_ticket
+                if(result.sucess && result.obs_ticket.isEmpty()){
+                    _warningMessage.value = "Este ticket no tiene observaciones"
+                }
+                if(!result.sucess && result.obs_ticket.isEmpty()){
+                    _errorMessage.value = "Ha ocurrido un error en la consulta"
+                }
                 Log.d("SupportList", "Ticket: ${result.obs_ticket}")
             }catch ( e: Exception ){
                 _errorMessage.value = e.message

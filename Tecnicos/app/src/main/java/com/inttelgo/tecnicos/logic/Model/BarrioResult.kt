@@ -1,6 +1,6 @@
 package com.inttelgo.tecnicos.logic.Model
 
-data class ProcessResult(
-    val proceso: Proceso? = null,
+data class BarrioResult(
+    val barrios: List<Barrio>,
     val success: Boolean
 )
