@@ -1,5 +1,6 @@
 package com.inttelgo.tecnicos.ui.view
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,13 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,19 +49,21 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import com.inttelgo.tecnicos.R
+import com.inttelgo.tecnicos.components.AlertCard
+import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.FloatingButtons
+import com.inttelgo.tecnicos.components.InternetAccess
+import com.inttelgo.tecnicos.components.WarningCard
+import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.Picture
 import com.inttelgo.tecnicos.ui.viewmodel.SupportViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: String) -> Unit){
+fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id: String, type: String) -> Unit){
     val viewModelS: SupportViewModel = remember { SupportViewModel() }
     val showHistory = remember { mutableStateOf(false) }
-    LaunchedEffect (Unit) {
-        viewModelS.getSupportData(idSuport)
-    }
     val support by viewModelS.supportData.collectAsState()
     val supportcheck by viewModelS.supportCheck.collectAsState()
     Scaffold (
@@ -77,7 +80,7 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
                 },
                 actions = {
                     Text(
-                        idSuport,
+                        "idTicket: $idSuport",
                         style = TextStyle(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
@@ -93,14 +96,7 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
             FloatingButtons(idSuport, navigateToUploadImage)
         }
     ){ innerPadding ->
-        if(!supportcheck){
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }else{
+
             Column (
                 modifier = Modifier
                     .padding(innerPadding)
@@ -108,6 +104,22 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                val hasInternetConnection = rememberNetworkConnectivityState(context)
+                if(!hasInternetConnection.value){
+                    InternetAccess(hasInternetConnection.value)
+                }else{
+                    LaunchedEffect (Unit) {
+                        viewModelS.getSupportData(idSuport)
+                    }
+                }
+                if(!supportcheck){
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedIcon()
+                    }
+                }else{
                 Card (
                     Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -117,6 +129,8 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
                     Column (
                         modifier = Modifier.padding(20.dp)
                     ){
+                        Spacer(Modifier.height(5.dp))
+                        Text("#Cliente: ${support!!.cliente.nroCliente}")
                         Spacer(Modifier.height(5.dp))
                         Text("Cliente: ${support!!.cliente.nombre_1} ${support!!.cliente.apellido_1}")
                         Spacer(Modifier.height(5.dp))
@@ -132,7 +146,11 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
                 Row (
                     verticalAlignment = Alignment.CenterVertically
                 ){
-                    Spacer(Modifier.height(1.dp).width(120.dp).background(Color.Black))
+                    Spacer(
+                        Modifier
+                            .height(1.dp)
+                            .width(120.dp)
+                            .background(Color.Black))
                     Card(
                         onClick = {showHistory.value = !showHistory.value},
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
@@ -151,11 +169,15 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
                             )
                         }
                     }
-                    Spacer(Modifier.height(1.dp).width(120.dp).background(Color.Black))
+                    Spacer(
+                        Modifier
+                            .height(1.dp)
+                            .width(120.dp)
+                            .background(Color.Black))
                 }
 
                 if(showHistory.value){
-                    ListObs(viewModelS, idSuport)
+                    ListObs(viewModelS, idSuport, context)
                 }
             }
         }
@@ -164,86 +186,97 @@ fun SupportScreen(idSuport: String, navigateToUploadImage: (id: String, type: St
 
 
 @Composable
-fun ListObs(viewModelS: SupportViewModel, idSuport: String){
+fun ListObs(viewModelS: SupportViewModel, idSuport: String, context: Context){
     val showDialog = remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        viewModelS.getObs(idSuport)
+    val hasInternetConnection = rememberNetworkConnectivityState(context)
+    if(hasInternetConnection.value){
+        LaunchedEffect(Unit) {
+            viewModelS.getObs(idSuport)
+        }
     }
     val pictureList by viewModelS.pictureList.collectAsState()
     val picturesCheck by viewModelS.picturesCheck.collectAsState()
     val listCheck by viewModelS.listCheck.collectAsState()
     val observationList by viewModelS.observationList.collectAsState()
+    val errorMessage by viewModelS.errorMessage.collectAsState()
+    val warningMessage by viewModelS.warningMessage.collectAsState()
     if(!listCheck){
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            AnimatedIcon()
         }
     }else{
         if(picturesCheck){
             ImageAlertDialog(pictureList, showDialog)
         }
-        LazyColumn (
-            Modifier.fillMaxSize()
-        ){
-            items(observationList!!) { obs ->
-                Spacer(Modifier.height(10.dp))
-                Card(
-                    Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ){
-                    Row (Modifier.padding(20.dp)){
-                        Column (
-                            Modifier.width(250.dp)
-                        ){
-                            Text(
-                                "Observacion",
-                                style = TextStyle(
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
+            LazyColumn (
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
+                item {
+                    errorMessage?.let { AlertCard(it) }
+                    warningMessage?.let { WarningCard(it) }
+                }
+                items(observationList!!) { obs ->
+                    Spacer(Modifier.height(10.dp))
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ){
+                        Row (Modifier.padding(20.dp)){
+                            Column (
+                                Modifier.width(250.dp)
+                            ){
+                                Text(
+                                    "Observacion",
+                                    style = TextStyle(
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 )
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                obs.obs,
-                                fontSize = 12.sp
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                obs.fecha,
-                                style = TextStyle(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Normal
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    obs.obs,
+                                    fontSize = 12.sp
                                 )
-                            )
-                        }
-                        //Pick Icon
-                        Column (
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ){
-                            Text(
-                                "Evidencia",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(Modifier.height(5.dp))
-                            IconButton(onClick = {
-                                viewModelS.getImgs(obs.id_obs_ticket)
-                                showDialog.value = true
-                            }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.photo_library_icon),
-                                    contentDescription = "Photo_library icon",
-                                    tint = Color.Black
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    obs.fecha,
+                                    style = TextStyle(
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Normal
+                                    )
                                 )
+                            }
+                            //Pick Icon
+                            Column (
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ){
+                                Text(
+                                    "Evidencia",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                IconButton(onClick = {
+                                    viewModelS.getImgs(obs.id_obs_ticket)
+                                    showDialog.value = true
+                                }) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.photo_library_icon),
+                                        contentDescription = "Photo_library icon",
+                                        tint = Color.Black
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
+
     }
 }
 
@@ -264,32 +297,38 @@ private fun ImageAlertDialog(imageUrls: List<Picture>?, showDialog: MutableState
                 )
             },
             text = {
-                LazyColumn(
-                    Modifier
-                        .fillMaxWidth()
+                LazyRow(
+                    Modifier.height(350.dp)
                 ) {
+                    item {
+                        Spacer(modifier = Modifier.width(10.dp))
+                    }
                     items(imageUrls ?: emptyList()) { url ->
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            url.fecha +" "+url.ubicacion
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        val painter = rememberAsyncImagePainter(
-                            model = url.foto,
-                            onState = { state ->
-                                if (state is AsyncImagePainter.State.Error) {
-                                    Log.e("Coil", "Error al cargar la imagen: ${state.result.throwable}")
+
+                        Column {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                url.fecha +" "+url.ubicacion
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            val painter = rememberAsyncImagePainter(
+                                model = url.foto,
+                                onState = { state ->
+                                    if (state is AsyncImagePainter.State.Error) {
+                                        Log.e("Coil", "Error al cargar la imagen: ${state.result.throwable}")
+                                    }
                                 }
-                            }
-                        )
-                        Image(
-                            painter = painter,
-                            contentDescription = "Imagen desde la web",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(9f / 16f), // Relación de aspecto 16:9
-                            contentScale = ContentScale.Crop
-                        )
+                            )
+                            Image(
+                                painter = painter,
+                                contentDescription = "Imagen desde la web",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(3f / 4f), // Relación de aspecto 3:4
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
                     }
                 }
 

@@ -13,7 +13,7 @@ import com.inttelgo.tecnicos.ui.view.LoginScreen
 import com.inttelgo.tecnicos.ui.view.SupportScreen
 import com.inttelgo.tecnicos.ui.view.UploadImgScreen
 
-@RequiresApi(Build.VERSION_CODES.O)
+@RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun AppNavigation (context: Context){
     val navController = rememberNavController()
@@ -51,7 +51,7 @@ fun AppNavigation (context: Context){
         }
         composable<Support>{ backStackEntry ->
             val detail: Support = backStackEntry.toRoute()
-            SupportScreen(detail.idSupport){ id, type -> navController.navigate(UploadImg(id,type)) }
+            SupportScreen(detail.idSupport, context){ id, type -> navController.navigate(UploadImg(id,type)) }
         }
     }
 }

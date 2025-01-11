@@ -21,6 +21,6 @@ class UserPreferences (context: Context){
     fun getId(): String? = sharedPreferences.getString(KEY_ID, null)
 
     fun clearUser() {
-        sharedPreferences.edit().clear().apply()
+        sharedPreferences.edit().remove("username").apply()
     }
 }

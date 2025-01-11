@@ -1,7 +1,19 @@
 package com.inttelgo.tecnicos.components
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,7 +34,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,8 +54,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.google.android.gms.location.LocationServices
 import com.inttelgo.tecnicos.R
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.time.LocalDateTime
 
@@ -85,7 +103,7 @@ fun PassFlied(password: MutableState<String>, title: String,w: Dp) {
 }
 
 @Composable
-fun ButtonRainbow(text: String, modifier: Modifier, onClick: () -> Unit){
+fun ButtonRainbow(text: String, modifier: Modifier, flag: Boolean, onClick: () -> Unit){
     androidx.compose.material3.Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
@@ -96,13 +114,14 @@ fun ButtonRainbow(text: String, modifier: Modifier, onClick: () -> Unit){
     ) {
         Box(
             modifier = Modifier
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFff9900),
-                            Color(0xFFff6700)
+                .then(
+                    if (flag) {
+                        Modifier.background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color(0xFFFFA726), Color(0xFFFF5722))
+                            )
                         )
-                    )
+                    } else Modifier // No fondo para el secundario
                 )
                 .clip(RoundedCornerShape(10.dp))
         ) {
@@ -115,7 +134,7 @@ fun ButtonRainbow(text: String, modifier: Modifier, onClick: () -> Unit){
                 style = TextStyle(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFffffff)
+                    color = if (flag) Color(0xFFffffff) else Color.Black
                 )
             )
         }
@@ -149,13 +168,18 @@ fun SearchInput(search: MutableState<String>, onClick: () -> Unit){
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun OpenCameraScreen(photoUri: MutableState<List<Uri?>>) {
-    val context = LocalContext.current
+fun OpenCameraScreen(photoUri: MutableState<List<Uri?>>, showBottomSheet: MutableState<Boolean>, context: Context) {
+    val hasCameraPermission = remember { mutableStateOf(false) }
+
+    val cameraPermissionRequest = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission.value = isGranted
+    }
+
     val photoFile = remember { File(context.cacheDir, "${LocalDateTime.now()}.jpg") }
     // Uri para el archivo (utilizando FileProvider)
     val photoUriProvider = FileProvider.getUriForFile( context, "${context.packageName}.provider", photoFile)
-    // Estado para el permiso de cámara
-    val cameraPermissionState = remember { mutableStateOf(false) }
 
     // Lanzador de la cámara
     val launcher = rememberLauncherForActivityResult(
@@ -163,37 +187,48 @@ fun OpenCameraScreen(photoUri: MutableState<List<Uri?>>) {
         onResult = { success ->
             if (success) {
                 photoUri.value += listOf(photoUriProvider)
+                showBottomSheet.value = false
             }
         }
     )
-
-    // Lanzador para solicitar permisos
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            cameraPermissionState.value = isGranted
+    // Solicitar permisos de medios según la versión
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission.value) {
+            cameraPermissionRequest.launch(Manifest.permission.CAMERA)
         }
-    )
-
+    }
     // Solicitar permiso de cámara si no está otorgado
     ButtonWithText("Tomar Foto", R.drawable.photo_icon, 40.dp) {
-        if(!cameraPermissionState.value){
-            permissionLauncher.launch(android.Manifest.permission.CAMERA)
+        if(!hasCameraPermission.value){
+            Log.d("PhotoSelector", "Permissions are not granted.")
+            Toast.makeText(context, "Por favor, acepta los permisos para acceder a la camara.", Toast.LENGTH_LONG).show()
         }else{
             launcher.launch(photoUriProvider)
         }
     }
 }
 
+
 @Composable
 fun PhotoSelectorView(
     maxSelectionCount: Int = 10,
-    selectedImages: MutableState<List<Uri?>>) {
-    val galleryPermissionState = remember { mutableStateOf(false) }
+    selectedImages: MutableState<List<Uri?>>,
+    context: Context
+) {
+    val hasMediaPermissions = remember { mutableStateOf(false) }
+
     val singlePhotoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri -> selectedImages.value += listOf(uri) }
     )
+
+    val mediaPermissionRequest = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasMediaPermissions.value = permissions.values.all { it }
+        Log.d("PhotoSelector", "Permissions granted: ${hasMediaPermissions.value}")
+    }
+
     val multiplePhotoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = if (maxSelectionCount > 1) {
             maxSelectionCount
@@ -203,33 +238,58 @@ fun PhotoSelectorView(
         onResult = { uris -> selectedImages.value += uris }
     )
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        galleryPermissionState.value = isGranted
-    }
-
     fun launchPhotoPicker() {
-        if (maxSelectionCount > 1) {
-            multiplePhotoPickerLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-            )
+        if (hasMediaPermissions.value) {
+            if (maxSelectionCount > 1) {
+                multiplePhotoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            } else {
+                singlePhotoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
         } else {
-            singlePhotoPickerLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-            )
+            Log.d("PhotoSelector", "Permissions are not granted.")
+            Toast.makeText(context, "Por favor, acepta los permisos para acceder a la galería.", Toast.LENGTH_LONG).show()
         }
     }
-    ButtonWithText("Galeria", R.drawable.image_icon, 40.dp){
-        if(galleryPermissionState.value){
-            launchPhotoPicker()
-        }else{
-            permissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-            launchPhotoPicker()
-        }
 
+    LaunchedEffect(Unit) {
+        if (!hasMediaPermissions.value) {
+            val permissions = when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    arrayOf(
+                        Manifest.permission.READ_MEDIA_IMAGES,
+                        Manifest.permission.READ_MEDIA_VIDEO,
+                        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+                    )
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                    arrayOf(
+                        Manifest.permission.READ_MEDIA_IMAGES,
+                        Manifest.permission.READ_MEDIA_VIDEO
+                    )
+                }
+                else -> {
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    )
+                }
+            }
+            Log.d("PhotoSelector", "Requesting permissions...")
+            mediaPermissionRequest.launch(permissions)
+        }
+    }
+
+    ButtonWithText("Galería", R.drawable.image_icon, 40.dp) {
+        Log.d("PhotoSelector", "Button clicked, attempting to launch picker.")
+        launchPhotoPicker()
     }
 }
+
+
+
 
 @Composable
 fun TextButtonForm(text: String, isPrimary: Boolean, onClick: () -> Unit) {
@@ -265,4 +325,36 @@ fun TextButtonForm(text: String, isPrimary: Boolean, onClick: () -> Unit) {
                 .padding(12.dp)
         )
     }
+}
+
+
+@Composable
+fun rememberNetworkConnectivityState(context: Context): State<Boolean> {
+    val connectivityState = remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                super.onAvailable(network)
+                connectivityState.value = true
+            }
+
+            override fun onLost(network: Network) {
+                super.onLost(network)
+                connectivityState.value = false
+            }
+        }
+
+        connectivityManager.registerDefaultNetworkCallback(callback)
+
+        // Check initial connectivity state
+        val isConnected = connectivityManager.activeNetwork?.let { network ->
+            connectivityManager.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } ?: false
+        connectivityState.value = isConnected
+    }
+    return connectivityState
 }

@@ -2,34 +2,37 @@ package com.inttelgo.tecnicos.components
 
 import android.annotation.SuppressLint
 import android.graphics.Color.parseColor
-import android.net.Uri
 import android.util.Log
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -37,8 +40,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.inttelgo.tecnicos.R
+import com.inttelgo.tecnicos.logic.Model.PriorityData
+import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -83,29 +87,29 @@ fun PriorityCard(fecha_hora: String){
     val inputDate = LocalDateTime.parse(fecha_hora, formatter)
 
     // Calcular la prioridad con base en la diferencia de horas
-    val (priorityText, colorHex) = when (calculateHourDifference(inputDate)) {
-        in 0 until 8 -> "Prioridad Baja" to "#00FF00" // Verde
-        in 8 until 16 -> "Prioridad Media" to "#FFFF00" // Amarillo
-        else -> "Prioridad Alta" to "#FF0000" // Rojo
+    val priorityData = when (calculateHourDifference(inputDate)) {
+        in 0 until 8 -> PriorityData(1, "Prioridad Baja","#d1e7dd", "#105132", "#bbdbcc") // Verde
+        in 8 until 16 -> PriorityData(2, "Prioridad Media","#fff4cd","#7a641d", "#ffecb5")// Amarillo
+        else -> PriorityData(3, "Prioridad Alta", "#f8d7da", "#841f29", "#f5c2c7")// Rojo
     }
 
     // Mostrar en la interfaz
     Box(
         modifier = Modifier
             .background(
-                Color(parseColor(colorHex)),
-                RoundedCornerShape(50.dp)
+                Color(parseColor(priorityData.backgroundColor)),
+                RoundedCornerShape(5.dp)
             )
             .border(
                 width = 0.dp,
-                color = Color.Transparent,
-                shape = RoundedCornerShape(50.dp)
+                color = Color(parseColor(priorityData.borderColor)),
+                shape = RoundedCornerShape(5.dp)
             ),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = priorityText,
-            color = Color.White,
+            text = priorityData.priorityText,
+            color = Color(parseColor(priorityData.textColor)),
             style = TextStyle(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -244,6 +248,130 @@ fun AlertCard(message: String){
             ),
             modifier = Modifier
                 .padding(20.dp)
+        )
+    }
+}
+
+@Composable
+fun WarningCard(message: String){
+    Box(
+        modifier = Modifier
+            .then(
+                Modifier.background(
+                    color = Color(0xFFfff4cd),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFFffecb5),
+                shape = RoundedCornerShape(10.dp)
+            ).width(300.dp)
+    ) {
+        Text(
+            text = message,
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF7a641d),
+            ),
+            modifier = Modifier
+                .padding(20.dp)
+        )
+    }
+}
+
+@Composable
+fun AnimatedIcon() {
+    val scale = remember { Animatable(1f) } // Inicializa la animación con un valor inicial
+
+    LaunchedEffect(Unit) {
+        while (true) { // Bucle infinito para alternar subida y bajada
+            scale.animateTo(
+                targetValue = 1.3f, // Escala hacia arriba
+                animationSpec = tween(durationMillis = 1000)
+            )
+            scale.animateTo(
+                targetValue = 1f, // Escala hacia abajo
+                animationSpec = tween(durationMillis = 1000)
+            )
+            delay(200)
+        }
+    }
+
+    Image(
+        painter = painterResource(id = R.drawable.logo_mano),
+        contentDescription = "logo",
+        modifier = Modifier
+            .size(60.dp)
+            .scale(scale.value) // Vincula el valor animado
+    )
+}
+
+@Composable
+fun PrioritiesCard(prioritySelected: MutableState<Int>) {
+    Row (
+        Modifier.fillMaxWidth()
+            .padding(start = 20.dp)
+    ){
+        val listPriorities: List<PriorityData> = listOf(
+            PriorityData(0,"Todos","#d0e0f5", "#104493", "#b8d2ef"),
+            PriorityData(1,"Baja","#d1e7dd", "#105132", "#bbdbcc"),
+            PriorityData(2,"Media","#fff4cd","#7a641d", "#ffecb5"),
+            PriorityData(3,"Alta", "#f8d7da", "#841f29", "#f5c2c7")
+        )
+        listPriorities.forEach { p->
+            Box(
+                modifier = Modifier
+                    .background(
+                        if(prioritySelected.value == p.id) Color(parseColor(p.textColor)) else Color(parseColor(p.backgroundColor)) ,
+                        RoundedCornerShape(5.dp)
+                    )
+                    .border(
+                        width = 0.dp,
+                        color = Color(parseColor(p.borderColor)),
+                        shape = RoundedCornerShape(5.dp)
+                    )
+                    .clickable{
+                        prioritySelected.value = p.id
+                    }
+            ) {
+                Text(
+                    text = p.priorityText,
+                    color = if(prioritySelected.value == p.id) Color(parseColor(p.backgroundColor)) else Color(parseColor(p.textColor)),
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.padding(5.dp)
+                        .background(Color.Transparent)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+        }
+    }
+}
+
+@Composable
+fun InternetAccess(flag: Boolean){
+    Box (
+        Modifier.fillMaxWidth()
+            .padding(10.dp)
+            .background(if(!flag)Color(0xFF424242) else Color(0xFF2aa641)),
+        contentAlignment = Alignment.Center
+    ){
+        Text(
+            if(!flag) "Sin conexion a internet" else "De nuevo con conexion",
+            style = TextStyle(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            ),
+            modifier = Modifier.padding(10.dp)
         )
     }
 }
