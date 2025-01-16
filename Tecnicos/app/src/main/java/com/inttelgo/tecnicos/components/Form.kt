@@ -1,11 +1,7 @@
 package com.inttelgo.tecnicos.components
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -13,7 +9,6 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -44,22 +40,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import com.google.android.gms.location.LocationServices
 import com.inttelgo.tecnicos.R
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.time.LocalDateTime
 
@@ -358,3 +350,31 @@ fun rememberNetworkConnectivityState(context: Context): State<Boolean> {
     }
     return connectivityState
 }
+
+@Composable
+fun NumberField(
+    number: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    onChange: (Int) -> Unit
+) {
+    // Convertimos el número inicial a texto, permitiendo vacío si es necesario
+    val textValue = remember { mutableStateOf(number.toString()) }
+
+    OutlinedTextField(
+        value = textValue.value,
+        onValueChange = { newValue ->
+            textValue.value = newValue // Actualizamos el texto
+            val parsedNumber = newValue.toIntOrNull() // Convertimos a Int si es posible
+            if (parsedNumber != null) {
+                onChange(parsedNumber) // Notificamos cambios válidos
+            } else if (newValue.isEmpty()) {
+                onChange(0) // Notificamos que el número es 0 si el campo está vacío
+            }
+        },
+        label = { Text(label) },
+        modifier = modifier,
+        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+    )
+}
+

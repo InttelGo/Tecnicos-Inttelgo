@@ -85,6 +85,23 @@ class HomeViewModel : ViewModel(){
             }
         }
     }
+
+    fun ActualizarEstadoI(
+        idInstalacion: String,
+        navigateToUploadImage: (id: String, type: String) -> Unit
+    ) {
+        val service = RetroFitServiceFactory.makeRetroFitService()
+        viewModelScope.launch {
+            try {
+                val result = service.setInstalacion("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&id=$idInstalacion&estado=${8}")
+                Log.d("Actualizar estado I", result.toString())
+                navigateToUploadImage( idInstalacion, "Proceso")
+            }catch (e: Exception){
+                _errorMessage.value = e.message
+            }
+        }
+    }
+
     fun setNofifies(){
         _errorMessage.value = null
         _warningMessage.value = null
