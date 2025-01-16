@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,13 +15,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -53,6 +54,7 @@ import com.inttelgo.tecnicos.components.AlertCard
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.FloatingButtons
 import com.inttelgo.tecnicos.components.InternetAccess
+import com.inttelgo.tecnicos.components.TextButtonForm
 import com.inttelgo.tecnicos.components.WarningCard
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.Picture
@@ -282,7 +284,8 @@ fun ListObs(viewModelS: SupportViewModel, idSuport: String, context: Context){
 
 @Composable
 private fun ImageAlertDialog(imageUrls: List<Picture>?, showDialog: MutableState<Boolean>, title: String = "Imágenes") {
-
+    val totalImages = imageUrls?.size
+    val imagenActual = remember { mutableIntStateOf(0) }
     // AlertDialog con imágenes
     if (showDialog.value) {
         AlertDialog(
@@ -297,45 +300,66 @@ private fun ImageAlertDialog(imageUrls: List<Picture>?, showDialog: MutableState
                 )
             },
             text = {
-                LazyRow(
-                    Modifier.height(350.dp)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.width(10.dp))
-                    }
-                    items(imageUrls ?: emptyList()) { url ->
-
-                        Column {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                url.fecha +" "+url.ubicacion
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            val painter = rememberAsyncImagePainter(
-                                model = url.foto,
-                                onState = { state ->
-                                    if (state is AsyncImagePainter.State.Error) {
-                                        Log.e("Coil", "Error al cargar la imagen: ${state.result.throwable}")
-                                    }
-                                }
-                            )
-                            Image(
-                                painter = painter,
-                                contentDescription = "Imagen desde la web",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(3f / 4f), // Relación de aspecto 3:4
-                                contentScale = ContentScale.Crop
-                            )
+                val painter = rememberAsyncImagePainter(
+                    model = imageUrls?.get(imagenActual.intValue)!!.foto,
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Error) {
+                            Log.e("Coil", "Error al cargar la imagen: ${state.result.throwable}")
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
+                    }
+                )
+                Column (
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ){
+                    Row (
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                            .aspectRatio(1f)
+                    ){
+                        //Boton de retroceso
+                        if(imagenActual.intValue > 0){
+                            Box (
+                                modifier = Modifier
+                                    .clickable { imagenActual.intValue-- }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_circle_left_icon),
+                                    contentDescription = "Close icon",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
+                        Image(
+                            painter = painter,
+                            contentDescription = "Imagen desde la web",
+                            modifier = Modifier.width(250.dp),
+                            contentScale = ContentScale.Fit // Ajustar imagen sin recortar
+                        )
+                        //Boton de avanzar
+                        if(imagenActual.intValue < totalImages!!-1){
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box (
+                                modifier = Modifier
+                                    .clickable { imagenActual.intValue++ }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_circle_right_icon),
+                                    contentDescription = "Close icon",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
-
             },
             confirmButton = {
-                Button(onClick = { showDialog.value = false }) {
-                    Text(text = "Cerrar")
+                TextButtonForm("Cerrar", true){
+                    showDialog.value = false
                 }
             }
         )

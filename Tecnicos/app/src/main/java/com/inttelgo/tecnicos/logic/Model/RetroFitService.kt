@@ -45,6 +45,26 @@ interface RetroFitService {
         @Url url: String
     ): BarrioResult
 
+    @GET
+    suspend fun getTypeI(
+        @Url url: String
+    ): PlanResult
+
+    @GET
+    suspend fun getArticles(
+        @Url url: String
+    ): ArticuloResult
+
+    @GET
+    suspend fun setInventary(
+        @Url url: String
+    )
+
+    @GET
+    suspend fun setInstalacion(
+        @Url url: String
+    ): Int
+
     companion object {
         fun encodeToBase64(url: String): String = Base64.encodeToString(url.toByteArray(), Base64.DEFAULT)
     }

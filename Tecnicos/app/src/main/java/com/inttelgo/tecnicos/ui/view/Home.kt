@@ -2,8 +2,6 @@ package com.inttelgo.tecnicos.ui.view
 
 import android.Manifest
 import android.content.Context
-import android.preference.PreferenceManager
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -56,7 +54,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AlertCard
 import com.inttelgo.tecnicos.components.AnimatedIcon
@@ -77,7 +74,6 @@ import com.inttelgo.tecnicos.navigation.Support
 import com.inttelgo.tecnicos.navigation.UploadImg
 import com.inttelgo.tecnicos.ui.viewmodel.HomeViewModel
 import com.inttelgo.tecnicos.ui.viewmodel.LoginViewModel
-import kotlin.system.exitProcess
 
 @Preview
 @Composable
@@ -395,7 +391,9 @@ private fun Process(
                         )
                     }
                     Spacer(Modifier.height(10.dp))
-                    ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth(), true) { navigateToUploadImage( process.value!!.id_instalacion, "Proceso") }
+                    ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth(), true) {
+                        viewModelH.ActualizarEstadoI(process.value!!.id_instalacion, navigateToUploadImage)
+                    }
                 }
             }
         }else{
