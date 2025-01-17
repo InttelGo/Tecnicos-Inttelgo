@@ -166,7 +166,7 @@ fun FloatingButtons(id: String, navigateToUploadImage: (id: String, type: String
     Column(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
+        modifier = Modifier.padding(end = 16.dp, bottom = 70.dp)
     ) {
         // Botones secundarios (visibles solo cuando el menú está expandido
         if (isMenuExpanded.value) {

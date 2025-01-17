@@ -290,7 +290,9 @@ private fun ImageAlertDialog(imageUrls: List<Picture>?, showDialog: MutableState
     if (showDialog.value) {
         AlertDialog(
             containerColor = Color.White,
-            onDismissRequest = { showDialog.value = false },
+            onDismissRequest = {
+                showDialog.value = false
+                               },
             title = {
                 Text(
                     text = title,
@@ -359,6 +361,7 @@ private fun ImageAlertDialog(imageUrls: List<Picture>?, showDialog: MutableState
             },
             confirmButton = {
                 TextButtonForm("Cerrar", true){
+                    imagenActual.intValue=0
                     showDialog.value = false
                 }
             }

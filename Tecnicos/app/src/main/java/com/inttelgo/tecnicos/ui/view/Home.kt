@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,7 +48,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -125,7 +128,9 @@ fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String)
     }
     val userPreferences = UserPreferences(context)
     if(userPreferences.getId() == null){
+        LaunchedEffect(Unit) {
             viewModelL.isLoggedUser(navigateToLogin, userPreferences.getId())
+        }
     }else{
         Scaffold (
             topBar = {
@@ -272,7 +277,7 @@ private fun Soport(
                                             "Id Tiecket: ${ticket.id_ticket}",
                                             style = TextStyle(
                                                 fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.ExtraBold
                                             )
                                         )
                                     }
@@ -284,7 +289,33 @@ private fun Soport(
                                     }
                                 }
                                 Row (Modifier.padding(15.dp).fillMaxWidth()){
-                                    Text("Icono")
+                                    val imageResId = remember(ticket.tipo.icon) {
+                                        context.resources.getIdentifier(ticket.tipo.icon, "drawable", context.packageName)
+                                    }
+
+                                    if (imageResId != 0) {
+                                        Column (
+                                            Modifier.width(100.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Image(
+                                                painter = painterResource(imageResId),
+                                                contentDescription = "Imagen de ticket",
+                                                modifier = Modifier.size(60.dp)
+                                            )
+                                            Spacer(Modifier.width(10.dp))
+                                            Text(
+                                                ticket.tipo.descripcion,
+                                                style = TextStyle(
+                                                    fontSize = 14.sp,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            )
+                                        }
+                                    } else {
+                                        // Manejo de caso donde el ícono no se encuentra
+                                        Text("Ícono no disponible")
+                                    }
                                     Spacer(Modifier.width(15.dp))
                                     Column{
                                         Spacer(Modifier.height(5.dp))
