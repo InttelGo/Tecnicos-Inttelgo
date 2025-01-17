@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -106,28 +107,31 @@ class LocationService : Service() {
 
 
     private fun sendLocationToServer(location: Location) {
-        Log.d(TAG, "Ubicación obtenida: Lat=${location.latitude}, Lng=${location.longitude}")
-        val client = OkHttpClient()
-        val url = "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ubication.php")}"
+        val userid = UserPreferences(this).getId()
+        Log.d(TAG, "Ubicación obtenida: Lat=${location.latitude}, Lng=${location.longitude}, idUser=${userid}")
+        if(userid!=""){
+            val client = OkHttpClient()
+            val url = "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ubication.php")}"
 
-        val formBody = FormBody.Builder()
-            .add("latitude", location.latitude.toString())
-            .add("longitude", location.longitude.toString())
-            .build()
+            val formBody = FormBody.Builder()
+                .add("latitud", location.latitude.toString())
+                .add("altitud", location.longitude.toString())
+                .add("id_usuario", userid.toString())
+                .build()
 
-        val request = Request.Builder()
-            .url(url)
-            .post(formBody)
-            .build()
-        Log.d(TAG, request.toString())
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                println("Respuesta del servidor: ${response.body?.string()}")
-            }
-        })
+            val request = Request.Builder()
+                .url(url)
+                .post(formBody)
+                .build()
+            Log.d(TAG, request.toString())
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    e.printStackTrace()
+                }
+                override fun onResponse(call: Call, response: Response) {
+                    println("Respuesta del servidor: ${response.body?.string()}")
+                }
+            })
+        }
     }
 }
