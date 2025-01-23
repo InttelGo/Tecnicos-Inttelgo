@@ -18,28 +18,29 @@ class Localizacion {
     suspend fun getUserLocation(context: Context): Location?{
         val fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        //Validacion de que tenga algun tipo de proveedor de GPS
         val isGPSEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) || locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
         if(!isGPSEnabled){
             return null
         }
-        return suspendCancellableCoroutine { con ->
+        return suspendCancellableCoroutine { con -> //lanza la corrutina para que siempre se este ejecutando
             fusedLocationProviderClient.lastLocation.apply {
                 if(isComplete){
                     if(isSuccessful){
-                        con.resume(result){}
+                        con.resume(result){}//Retorna la ubicacion si tiene proveedor de ubicacion
                     }else{
-                        con.resume(null){}
+                        con.resume(null){} //Retorna un vacio poruqe no ha encontrado nafa
                     }
                     return@suspendCancellableCoroutine
                 }
                 addOnSuccessListener{
-                    con.resume(it){}
+                    con.resume(it){} //Escuchador constante
                 }
                 addOnFailureListener{
-                    con.resume(null){}
+                    con.resume(null){} //Falla en algun momento
                 }
                 addOnCanceledListener {
-                    con.resume(null){}
+                    con.resume(null){} //Si se cancela el servicio
                 }
             }
         }

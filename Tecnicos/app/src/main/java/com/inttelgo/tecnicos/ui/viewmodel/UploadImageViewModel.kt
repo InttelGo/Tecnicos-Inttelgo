@@ -15,6 +15,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inttelgo.tecnicos.logic.Model.Articulo
+import com.inttelgo.tecnicos.logic.Model.Picture
 import com.inttelgo.tecnicos.logic.Model.Plan
 import com.inttelgo.tecnicos.logic.Model.RetroFitService
 import com.inttelgo.tecnicos.logic.RetroFitServiceFactory
@@ -42,9 +43,12 @@ class UploadImageViewModel : ViewModel(){
 
     private val _checkTipoI = MutableStateFlow<Boolean>(false)
     val checkTipoI: StateFlow<Boolean> = _checkTipoI
+
     private val _checkArticles = MutableStateFlow<Boolean>(false)
     val checkArticles: StateFlow<Boolean> = _checkArticles
 
+    private val _uploadedImages = MutableStateFlow<List<Picture?>>(emptyList())
+    val uploadedImagesList: StateFlow<List<Picture?>?> = _uploadedImages
 
     private val _warningMessage = MutableStateFlow<String?>(null)
     val warningMessage: StateFlow<String?> = _warningMessage
@@ -55,17 +59,22 @@ class UploadImageViewModel : ViewModel(){
     private val _tipoI = MutableStateFlow<Plan?>(null)
     val tipoI: StateFlow<Plan?> = _tipoI
 
+
+    private val TAG ="UploadImageViewModel"
+
+
     @RequiresApi(Build.VERSION_CODES.P)
-    fun uploadImage(
+    fun uploadImages(
         context: Context,
         imagesUpload: MutableState<List<Uri?>>,
         observation: MutableState<String>,
-        sucess: MutableState<Boolean>,
         idTicket: String,
         type: String,
         idTec: String,
         articlesState: SnapshotStateList<Articulo>,
         elapsedTime: MutableIntState,
+        uploadProgress: MutableState<Float>,
+        onProgress: (Float) -> Unit = {},
     ){
         var flag = false;
         if(type == "Proceso"){
@@ -85,7 +94,7 @@ class UploadImageViewModel : ViewModel(){
             flag = true
         }
 
-        if(observation.value.isEmpty() || imagesUpload.value.isEmpty()){
+        if(observation.value.isEmpty() || (imagesUpload.value.isEmpty()  && type != "Proceso")){
             _errorMessage.value = "Todos los campos son requeridos"
             _warningMessage.value = null
         }else{
@@ -99,8 +108,23 @@ class UploadImageViewModel : ViewModel(){
                     }else{
                         if(type == "Proceso"){
                             addInventary(idTicket, articlesState, service)
+                            Log.d(TAG, "prueba de proceso")
+                            uploadProgress.value = 1F
                         }
-                        generateImage(context, imagesUpload, idTicket, result, type, idTec, sucess)
+                        if(type!="Proceso"){
+                            val totalImages = imagesUpload.value.size.toFloat()
+                            generateImage(
+                                context,
+                                imagesUpload,
+                                idTicket,
+                                result,
+                                type,
+                                idTec,
+                                uploadProgress,
+                                onProgress,
+                                totalImages,
+                            )
+                        }
                     }
                 }
             }else{
@@ -116,37 +140,30 @@ class UploadImageViewModel : ViewModel(){
         }
     }
 
-    private suspend fun addInventary(
-        idTicket: String,
-        articlesState: SnapshotStateList<Articulo>,
-        service: RetroFitService
-    ){
-        articlesState.forEach { article ->
-            service.setInventary("https://app.inttelgo.com/Tecnicos/" +
-                    "?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}" +
-                    "&idArticle=${article.id_articulo}" +
-                    "&cantidad=${article.cantidad}" +
-                    "&idIn=$idTicket")
-            Log.d("Inventario addInventary", "https://app.inttelgo.com/Tecnicos/" +
-                    "?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}" +
-                    "&idArticle=${article.id_articulo}" +
-                    "&cantidad=${article.cantidad}" +
-                    "&idIn=$idTicket")
-        }
-    }
     @SuppressLint("NewApi")
-    private suspend fun  generateImage(context: Context, imagesUpload: MutableState<List<Uri?>>, idTicket: String, idObs: Int, type: String, idTec: String, sucess: MutableState<Boolean>){
+    suspend fun  generateImage(
+        context: Context,
+        imagesUpload: MutableState<List<Uri?>>,
+        idTicket: String,
+        idObs: Int,
+        type: String,
+        idTec: String,
+        onProgress: MutableState<Float>,
+        uploadProgress: (Float) -> Unit,
+        totalImages: Float,
+    ){
+        var progress = 0F
         val client = OkHttpClient() // Usa el cliente fuera del bucle
         val result2 = locationService.getUserLocation(context)
         if(result2 != null){
-            Log.d("ubication Latitud", result2.latitude.toString())
-            Log.d("ubication Longitud", result2.longitude.toString())
+            Log.d(TAG, result2.latitude.toString())
+            Log.d(TAG, result2.longitude.toString())
 
             var address = getAddressFromCoordinates(context, result2.latitude, result2.longitude)
 
             if (address != null) {
                 address = trimAfterThirdComma(address)
-                Log.d("ubication Dirección", address)
+                Log.d(TAG, address)
                 for (uri in imagesUpload.value) {
                     val currentDate = LocalDateTime.now()
                     if (uri == null) continue // Ignora valores nulos en la lista
@@ -175,14 +192,41 @@ class UploadImageViewModel : ViewModel(){
                             .post(requestBody)
                             .build()
                         val response = client.newCall(request).execute()
-                        sucess.value = response.isSuccessful
+                        if(response.isSuccessful){
+                            onProgress.value++
+                            progress += onProgress.value / totalImages
+                            Log.d(TAG, progress.toString())
+                            uploadProgress(progress) // Update progress callback
+                        }
+                        if(type=="Proceso"){
+                            this.getImages(idTicket)
+                        }
                     } catch (e: Exception) {
-                        Log.e("Upload Image Error", "$uri: ${e.localizedMessage}", e)
+                        Log.e(TAG, "$uri: ${e.localizedMessage}", e)
                     }
                 }
             } else {
-                Log.d("ubication Dirección", "No se pudo obtener la dirección.")
+                Log.d(TAG, "No se pudo obtener la dirección.")
             }
+        }
+    }
+
+    private suspend fun addInventary(
+        idTicket: String,
+        articlesState: SnapshotStateList<Articulo>,
+        service: RetroFitService
+    ){
+        articlesState.forEach { article ->
+            service.setInventary("https://app.inttelgo.com/Tecnicos/" +
+                    "?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}" +
+                    "&idArticle=${article.id_articulo}" +
+                    "&cantidad=${article.cantidad}" +
+                    "&idIn=$idTicket")
+            Log.d("Inventario addInventary", "https://app.inttelgo.com/Tecnicos/" +
+                    "?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}" +
+                    "&idArticle=${article.id_articulo}" +
+                    "&cantidad=${article.cantidad}" +
+                    "&idIn=$idTicket")
         }
     }
     @SuppressLint("NewApi", "DefaultLocale")
@@ -195,20 +239,12 @@ class UploadImageViewModel : ViewModel(){
         elapsedTime: MutableIntState
     ): Int {
         if(type=="Proceso"){
-            Log.d("URL Pooceso", "https://app.inttelgo.com/Tecnicos/" +
-                    "?pid=${RetroFitService.encodeToBase64("pages/process.php")}" +
-                    "&obs='${observation.value}'" +
-                    "&idT=$idTicket" +
-                    "&idTec=$idTec"+
-                    "&date='${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}'" +
-                    "&time="+elapsedTime.intValue)
             return service.setObs("https://app.inttelgo.com/Tecnicos/" +
                     "?pid=${RetroFitService.encodeToBase64("pages/process.php")}" +
                     "&obs='${observation.value}'" +
                     "&idT=$idTicket" +
                     "&idTec=$idTec"+
-                    "&date='${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}'" + 
-                    "&time="+elapsedTime.intValue
+                    "&date='${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}'"
             )
         }else{
             return service.setObs("https://app.inttelgo.com/Tecnicos/" +
@@ -232,10 +268,24 @@ class UploadImageViewModel : ViewModel(){
             if(result.success){
                 _checkArticles.value = result.success
                 _articles.value = result.articulos
-                Log.d("Artículos", result.success.toString())
-                Log.d("Artículos", result.articulos.toString())
+                Log.d(TAG, result.success.toString())
+                Log.d(TAG, result.articulos.toString())
             }else{
                 _errorMessage.value = "Error en la consulta de la base de datos"
+            }
+        }
+    }
+
+    fun getImages(id: String){
+        val service = RetroFitServiceFactory.makeRetroFitService()
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/image.php")}&id=$id")
+                val result = service.getPictures("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/image.php")}&id=$id")
+                _uploadedImages.value = result.pictures
+                Log.d(TAG, "Ticket: ${result.pictures}")
+            }catch ( e: Exception ){
+                _errorMessage.value = e.message
             }
         }
     }
@@ -243,13 +293,16 @@ class UploadImageViewModel : ViewModel(){
     fun getTypeI(id: String){
         val service = RetroFitServiceFactory.makeRetroFitService()
         viewModelScope.launch(Dispatchers.IO) {
+            Log.d(TAG, "https://app.inttelgo.com/Tecnicos/"+"?pid=${RetroFitService.encodeToBase64("pages/process.php")}&id=$id")
+            Log.d("getArticles", "https://app.inttelgo.com/Tecnicos/" +
+                    "?pid=${RetroFitService.encodeToBase64("pages/image.php")}&id=$id")
             val result = service.getTypeI("https://app.inttelgo.com/Tecnicos/" +
                     "?pid=${RetroFitService.encodeToBase64("pages/process.php")}&id=$id")
             if(result.success){
                 _checkTipoI.value = result.success
                 _tipoI.value = result.plan
-                Log.d("Tipo I", result.plan.toString())
-                Log.d("Tipo I", result.success.toString())
+                Log.d(TAG, result.plan.toString())
+                Log.d(TAG, result.success.toString())
             }else{
                 _errorMessage.value = "Error en la consulta de la base de datos"
             }
@@ -304,7 +357,7 @@ class UploadImageViewModel : ViewModel(){
                 "Dirección no encontrada"
             }
         } catch (e: Exception) {
-            Log.e("Geocoder Error", "Error al obtener la dirección: ${e.localizedMessage}", e)
+            Log.e(TAG, "Error al obtener la dirección: ${e.localizedMessage}", e)
             null
         }
     }

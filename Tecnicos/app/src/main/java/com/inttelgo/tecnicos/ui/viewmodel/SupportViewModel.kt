@@ -20,19 +20,19 @@ class SupportViewModel : ViewModel(){
     private val _warningMessage = MutableStateFlow<String?>(null)
     val warningMessage: StateFlow<String?> = _warningMessage
 
-    private val _supportCheck = MutableStateFlow<Boolean>(false)
+    private val _supportCheck = MutableStateFlow(false)
     val supportCheck: StateFlow<Boolean> = _supportCheck
 
     private val _supportData = MutableStateFlow<Ticket?>(null)
     val supportData: StateFlow<Ticket?> = _supportData
 
-    private val _listCheck = MutableStateFlow<Boolean>(false)
+    private val _listCheck = MutableStateFlow(false)
     val listCheck: StateFlow<Boolean> = _listCheck
 
     private val _observationList = MutableStateFlow<List<ObsTicket>?>(null)
     val observationList: StateFlow<List<ObsTicket>?> = _observationList
 
-    private val _picturesCheck = MutableStateFlow<Boolean>(false)
+    private val _picturesCheck = MutableStateFlow(false)
     val picturesCheck: StateFlow<Boolean> = _picturesCheck
 
     private val _pictureList = MutableStateFlow<List<Picture>?>(null)
@@ -58,6 +58,7 @@ class SupportViewModel : ViewModel(){
         val service = RetroFitServiceFactory.makeRetroFitService()
         viewModelScope.launch {
             try {
+                Log.d("SupportList", "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/obs_ticket.php")}&id=$idTicket")
                 val result = service.getObs("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/obs_ticket.php")}&id=$idTicket")
                 _listCheck.value = result.sucess
                 _observationList.value = result.obs_ticket

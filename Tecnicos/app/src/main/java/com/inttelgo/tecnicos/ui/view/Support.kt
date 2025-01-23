@@ -82,7 +82,7 @@ fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id:
                 },
                 actions = {
                     Text(
-                        "idTicket: $idSuport",
+                        "Ticket: $idSuport",
                         style = TextStyle(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
@@ -246,13 +246,23 @@ fun ListObs(viewModelS: SupportViewModel, idSuport: String, context: Context){
                                     fontSize = 12.sp
                                 )
                                 Spacer(Modifier.height(10.dp))
-                                Text(
-                                    obs.fecha,
-                                    style = TextStyle(
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Normal
+                                Row {
+                                    Text(
+                                        obs.fecha,
+                                        style = TextStyle(
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Normal
+                                        )
                                     )
-                                )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        obs.tecnico.nombre+" "+obs.tecnico.apellido,
+                                        style = TextStyle(
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Normal
+                                        )
+                                    )
+                                }
                             }
                             //Pick Icon
                             Column (
