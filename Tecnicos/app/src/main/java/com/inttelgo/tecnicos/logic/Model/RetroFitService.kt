@@ -4,7 +4,7 @@ import android.util.Base64
 import retrofit2.http.GET
 import retrofit2.http.Url
 
-interface RetroFitService {
+interface RetroFitService { //Interfaz para los servicios web
 
     @GET
     suspend fun getUserData(

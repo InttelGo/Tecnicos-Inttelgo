@@ -39,17 +39,22 @@ class HomeViewModel : ViewModel(){
     private val _barrios = MutableStateFlow<List<Barrio>?>(null)
     val barrios: StateFlow<List<Barrio>?> = _barrios
 
-    fun searchProcess(search: String){
+    fun searchProcess(search: String){ //buscar el proceso
         // Expresión regular que busca caracteres que no sean dígitos
         val regex = "[^0-9]".toRegex()
-        if(regex.containsMatchIn(search)){
+        if(regex.containsMatchIn(search)){ //Si contiene digitos no realiza el proceso
             _errorMessage.value = "El proceso $search contiene caracteres no válidos"
             return
         }else{
-            val service = RetroFitServiceFactory.makeRetroFitService()
+            val service = RetroFitServiceFactory.makeRetroFitService()//Lammado al retrofit para la solicitud GET
             viewModelScope.launch {
                 try {
+                    /*
+                    * La funcion
+                    * */
+                    Log.d("searchProcess", "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&search=${search}")
                     val result = service.getProcessData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&search=${search}")
+
                     _checkProcessData.value = result.success
                     _processData.value = result.proceso
                     Log.d("searchProcess", "sucess: ${result.success}")
@@ -88,12 +93,16 @@ class HomeViewModel : ViewModel(){
 
     fun ActualizarEstadoI(
         idInstalacion: String,
+        estado: Int,
+        id: String,
+        proceso: Proceso?,
         navigateToUploadImage: (id: String, type: String) -> Unit
     ) {
         val service = RetroFitServiceFactory.makeRetroFitService()
         viewModelScope.launch {
             try {
-                val result = service.setInstalacion("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&id=$idInstalacion&estado=${8}")
+                Log.d("Actualizar estado I", "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&id=$idInstalacion&estado=$estado&fecha_ini=${proceso?.fecha_ini}&id_tec_ini=$id")
+                val result = service.setInstalacion("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/process.php")}&id=$idInstalacion&estado=$estado&fecha_ini=${proceso?.fecha_ini}&id_tec_ini=$id")
                 Log.d("Actualizar estado I", result.toString())
                 navigateToUploadImage( idInstalacion, "Proceso")
             }catch (e: Exception){

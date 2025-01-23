@@ -1,6 +1,7 @@
 package com.inttelgo.tecnicos.ui.view
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,7 +49,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -80,7 +80,7 @@ import com.inttelgo.tecnicos.ui.viewmodel.LoginViewModel
 
 @Preview
 @Composable
-fun HomeScreenPreview(){
+fun HomeScreenPreview(){ //Previsualizacion del home
     val navController = rememberNavController()
     NavHost(navController, Home){
         composable<Home>{
@@ -98,23 +98,24 @@ fun HomeScreenPreview(){
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String) -> Unit, navigateToSupport: (idSupport: String) -> Unit, navigateToLogin: () -> Unit){
-    val viewModelL: LoginViewModel = remember { LoginViewModel() }
-    val viewModelH: HomeViewModel = remember { HomeViewModel() }
+    //Compose principal del home
+    val viewModelL: LoginViewModel = remember { LoginViewModel() } //Llamado al view model Login
+    val viewModelH: HomeViewModel = remember { HomeViewModel() } //Lamado al view model Home
     val targetValue = remember { mutableStateOf("Soporte") }
-    val userData by viewModelL.userData.collectAsState()
-    val expanded = remember { mutableStateOf(false) }
+    val expanded = remember { mutableStateOf(false) } //Booleano para el navegador lateral
 
+    //Boolean para comprobar los permisos de la aplicacion
     val hasFineLocation = remember { mutableStateOf(false) }
     val hasCoarseLocation = remember { mutableStateOf(false) }
 
-    // Lanzador para múltiples permisos
+    // Lanzador para verificar permisos de ubicacion
     val locationPermissionRequest = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Actualiza el estado en base a los resultados
         hasFineLocation.value = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
         hasCoarseLocation.value = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
     }
+
     // Lanzar la solicitud de permisos
     LaunchedEffect(Unit) {
         if(!hasFineLocation.value || !hasFineLocation.value){
@@ -126,15 +127,16 @@ fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String)
             )
         }
     }
-    val userPreferences = UserPreferences(context)
+
+    val userPreferences = UserPreferences(context) //Usuario logeado en la aplicacion
     if(userPreferences.getId() == null){
         LaunchedEffect(Unit) {
-            viewModelL.isLoggedUser(navigateToLogin, userPreferences.getId())
+            viewModelL.isLoggedUser(navigateToLogin, userPreferences.getId()) //navegacion para que se logee el usuario
         }
     }else{
-        Scaffold (
+        Scaffold ( //Compose para seccionar la ventana
             topBar = {
-                TopAppBar(
+                TopAppBar( //Divicion para la cabeza de la ventana
                     title = {
                         Image(
                             painter = painterResource(R.drawable.logo_inttelgo_2),
@@ -146,7 +148,7 @@ fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String)
                         },
                     actions = {
                         IconButton(onClick = { expanded.value = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                            Icon(Icons.Filled.MoreVert, contentDescription = "More") //icon button para desplegar el DropDownMenu
                         }
                         DropdownMenu(
                             expanded = expanded.value,
@@ -154,13 +156,13 @@ fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String)
                         ) {
                             DropdownMenuItem(
                                 onClick = { /* TODO */ },
-                                text = { Text(text = "Perfil") }
+                                text = { Text(text = "Perfil") } //Informacion del usuario
                             )
                             DropdownMenuItem(
                                 onClick = {
-                                    userPreferences.clearUser()
+                                    userPreferences.clearUser() //Limpa las credenciales del usuario.
                                 },
-                                text = { Text(text = "Cerrar sesión") }
+                                text = { Text(text = "Cerrar sesión") } //Cerrar la sesion
                             )
                         }
                     }
@@ -173,7 +175,7 @@ fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String)
                     .fillMaxSize()
             ) {
                 Spacer(Modifier.height(12.dp))
-                Row {
+                Row {//Targetas para seleccionar el tipo de actividad
                     Spacer(Modifier.width(20.dp))
                     TargetCustom("Soportes", (targetValue.value == "Soporte")) {
                         targetValue.value = "Soporte"
@@ -185,14 +187,15 @@ fun HomeScreen(context: Context, navigateToUploadImage: (id:String, type:String)
                 }
                 Spacer(Modifier.height(12.dp))
                 when(targetValue.value){
-                    "Soporte" -> Soport(viewModelH, targetValue.value, navigateToSupport, context)
-                    "Procesos" -> Process(viewModelH, targetValue.value, navigateToUploadImage, context)
+                    "Soporte" -> Soport(viewModelH, targetValue.value, navigateToSupport, context) //Componente para los soportes
+                    "Procesos" -> Process(viewModelH, navigateToUploadImage, context) //Componenete para los procesos
                 }
             }
         }
     }
 }
 
+@SuppressLint("DiscouragedApi")
 @Composable
 private fun Soport(
     viewModelH: HomeViewModel,
@@ -200,13 +203,13 @@ private fun Soport(
     navigateToSupport: (idSupport: String) -> Unit,
     context: Context
 ){
-    val prioritySelected = remember { mutableIntStateOf(0) }
-    val tickets by viewModelH.tickets.collectAsState()
-    val checkProcess by viewModelH.checkProcess.collectAsState()
-    val checkBarrios by viewModelH.checkBarrios.collectAsState()
-    val barrios by viewModelH.barrios.collectAsState()
+    val prioritySelected = remember { mutableIntStateOf(0) } //Selector de prioridad, por defecto es 0
+    val tickets by viewModelH.tickets.collectAsState() //Lista de tickets de la BD
+    val checkProcess by viewModelH.checkProcess.collectAsState() //Lanzador para los tickets
+    val checkBarrios by viewModelH.checkBarrios.collectAsState() //Lanzador para los varrios
+    val barrios by viewModelH.barrios.collectAsState() //Lista de barrios de la BD
 
-    val hasInternetConnection = rememberNetworkConnectivityState(context)
+    val hasInternetConnection = rememberNetworkConnectivityState(context) //Lanzador para verificar que el uduario cuente con internet
 
     Text(
         title,
@@ -217,17 +220,17 @@ private fun Soport(
         )
     )
     Spacer(Modifier.height(5.dp))
-    PrioritiesCard(prioritySelected)
+    PrioritiesCard(prioritySelected) //Listado de los tipos de prioridad
 
     Spacer(Modifier.height(5.dp))
-    if (!hasInternetConnection.value) { // Mostrar algo si no hay conexión
-        InternetAccess(hasInternetConnection.value)
+    if (!hasInternetConnection.value) {
+        InternetAccess(hasInternetConnection.value)  //Si no hay conexion le notifica al usuario
     }else{
-        LaunchedEffect(prioritySelected.intValue) { // Update launchedEffect to trigger on prioritySelected change
-            viewModelH.ticketsList(prioritySelected) // Use prioritySelected.value directly
+        LaunchedEffect(prioritySelected.intValue) { //Si el usuario cuenta con internet lanza la consulta dependiendo de la prioridad que haya seleccionado
+            viewModelH.ticketsList(prioritySelected) //consulta de los tickets en la BD
         }
     }
-    if(!checkProcess && !checkBarrios){
+    if(!checkProcess && !checkBarrios){ //Verifica hay datos en las dos listas
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -235,12 +238,12 @@ private fun Soport(
             AnimatedIcon()
         }
     }else{
-        val ticketsArreglados = tickets?.let { barrios?.let { it1 -> homeProcess().generarConjunto(it, it1) } }
+        val ticketsArreglados = tickets?.let { barrios?.let { it1 -> homeProcess().generarConjunto(it, it1) } } //Realiza el agrupamiento de los tickets por prefijo del barrio
         LazyColumn (
             Modifier.padding(20.dp).fillMaxHeight()
         ){
-            ticketsArreglados?.forEach { (barrio, ticketsConBarrio) ->
-                if(ticketsConBarrio.isNotEmpty()){
+            ticketsArreglados?.forEach { (barrio, ticketsConBarrio) -> //Recorrido de los barrio
+                if(ticketsConBarrio.isNotEmpty()){ //Si estan vacios no mostrar
                     item {
                         Spacer(Modifier.height(10.dp))
                         Text(
@@ -252,7 +255,7 @@ private fun Soport(
                         )
                         Spacer(Modifier.height(10.dp))
                     }
-                    items(ticketsConBarrio) { ticket ->
+                    items(ticketsConBarrio) { ticket -> //Recorrido de los tickets por barrio
                         Card (
                             Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -290,7 +293,7 @@ private fun Soport(
                                 }
                                 Row (Modifier.padding(15.dp).fillMaxWidth()){
                                     val imageResId = remember(ticket.tipo.icon) {
-                                        context.resources.getIdentifier(ticket.tipo.icon, "drawable", context.packageName)
+                                        context.resources.getIdentifier(ticket.tipo.icon, "drawable", context.packageName) //imagen para el tipo de ticket que es
                                     }
 
                                     if (imageResId != 0) {
@@ -313,7 +316,7 @@ private fun Soport(
                                             )
                                         }
                                     } else {
-                                        // Manejo de caso donde el ícono no se encuentra
+                                        // Aviso si el icono no se encuentra
                                         Text("Ícono no disponible")
                                     }
                                     Spacer(Modifier.width(15.dp))
@@ -334,7 +337,7 @@ private fun Soport(
                                 }
                                 Spacer(Modifier.height(5.dp))
                                 TextButtonForm("Ver más", true){
-                                    navigateToSupport(ticket.id_ticket)
+                                    navigateToSupport(ticket.id_ticket) //Navegacion para ver el detalle del ticket
                                 }
                             }
                             Spacer(Modifier.height(15.dp))
@@ -350,16 +353,15 @@ private fun Soport(
 @Composable
 private fun Process(
     viewModelH: HomeViewModel,
-    title: String,
     navigateToUploadImage: (id: String, type: String) -> Unit,
     context: Context
 ){
-    val process = viewModelH.processData.collectAsState()
-    val checkProcessData = viewModelH.checkProcessData.collectAsState()
-    val search = remember { mutableStateOf("") }
-    val errorMessage = viewModelH.errorMessage.collectAsState()
-    val warningMessage = viewModelH.warningMessage.collectAsState()
-    val hasInternetConnection = rememberNetworkConnectivityState(context)
+    val process = viewModelH.processData.collectAsState() //Proceso a buscar
+    val checkProcessData = viewModelH.checkProcessData.collectAsState() //Lanzador de proceso encontrado
+    val search = remember { mutableStateOf("") } //Buscador del proceso
+    val errorMessage = viewModelH.errorMessage.collectAsState() //Mensaje de error si ocurrio algo
+    val warningMessage = viewModelH.warningMessage.collectAsState() //Mensaje de alerta si no se encontro el ticket
+    val hasInternetConnection = rememberNetworkConnectivityState(context) //verificar de conexion
     Column (
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
@@ -376,14 +378,16 @@ private fun Process(
         Spacer(Modifier.height(1.dp).background(Color.Black).width(350.dp))
         Spacer(Modifier.height(5.dp))
 
-
+        //Validacion de conexion
         if (!hasInternetConnection.value) {
             InternetAccess(hasInternetConnection.value)
         }
+
+        //Si exiten mensajes por mostrar
         errorMessage.value?.let { AlertCard(it) }
         warningMessage.value?.let { WarningCard(it) }
 
-        if(checkProcessData.value){
+        if(checkProcessData.value){ //Si se ecntontro el dato
             Card (
                 Modifier.fillMaxWidth().padding(20.dp),
                 shape = RoundedCornerShape(16.dp),
@@ -422,8 +426,25 @@ private fun Process(
                         )
                     }
                     Spacer(Modifier.height(10.dp))
-                    ButtonRainbow("Iniciar Proceso", Modifier.fillMaxWidth(), true) {
-                        viewModelH.ActualizarEstadoI(process.value!!.id_instalacion, navigateToUploadImage)
+                    val textButton = if(process.value!!.fecha_ini == null) "Iniciar Proceso" else "Continuar Proceso"
+                    ButtonRainbow(textButton, Modifier.fillMaxWidth(), true) {
+                        /*
+                        * Iniciar el proceso de instalacion
+                        *
+                        * 1. Cambiando el estado en la base de datos el estado 8 == Proceso de instalacion
+                        * 2. Navegando hacia el componente para agregar las evidencias
+                        *
+                        * */
+                        val userPreferences = UserPreferences(context)
+                        userPreferences.getId()?.let {
+                            viewModelH.ActualizarEstadoI(
+                                process.value!!.id_instalacion,
+                                8,
+                                id = it,
+                                process.value!!,
+                                navigateToUploadImage
+                            )
+                        }
                     }
                 }
             }
