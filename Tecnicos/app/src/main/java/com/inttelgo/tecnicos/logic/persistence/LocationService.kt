@@ -108,6 +108,7 @@ class LocationService : Service() {
 
     private fun sendLocationToServer(location: Location) {
         val userid = UserPreferences(this).getId()
+        val color = UserPreferences(this).getColor()
         Log.d(TAG, "Ubicación obtenida: Lat=${location.latitude}, Lng=${location.longitude}, idUser=${userid}")
         if(userid!=""){
             val client = OkHttpClient()
@@ -117,6 +118,7 @@ class LocationService : Service() {
                 .add("latitud", location.latitude.toString())
                 .add("altitud", location.longitude.toString())
                 .add("id_usuario", userid.toString())
+                .add("color", color.toString())
                 .build()
 
             val request = Request.Builder()

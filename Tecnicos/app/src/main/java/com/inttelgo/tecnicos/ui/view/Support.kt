@@ -54,6 +54,7 @@ import com.inttelgo.tecnicos.components.AlertCard
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.FloatingButtons
 import com.inttelgo.tecnicos.components.InternetAccess
+import com.inttelgo.tecnicos.components.PhoneCard
 import com.inttelgo.tecnicos.components.TextButtonForm
 import com.inttelgo.tecnicos.components.WarningCard
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
@@ -85,7 +86,7 @@ fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id:
                         "Ticket: $idSuport",
                         style = TextStyle(
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.ExtraBold,
                             textAlign = TextAlign.Center
                         ),
                         modifier = Modifier.padding(15.dp)
@@ -132,15 +133,45 @@ fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id:
                         modifier = Modifier.padding(20.dp)
                     ){
                         Spacer(Modifier.height(5.dp))
-                        Text("#Cliente: ${support!!.cliente.nroCliente}")
-                        Spacer(Modifier.height(5.dp))
-                        Text("Cliente: ${support!!.cliente.nombre_1} ${support!!.cliente.apellido_1}")
-                        Spacer(Modifier.height(5.dp))
-                        Text("Numeros Telefonicos: " +
-                                support!!.cliente.telefono_1
+                        Text(
+                            "#Cliente: ${support!!.cliente.nroCliente}",
+                            style = TextStyle(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.DarkGray
+                            ),
                         )
                         Spacer(Modifier.height(5.dp))
-                        Text("Direccion: ${support!!.cliente.direccion}")
+                        Text(
+                            "Cliente: ${support!!.cliente.nombre_1} ${support!!.cliente.apellido_1}",
+                            style = TextStyle(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.DarkGray
+                            ),
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            "Numeros Telefonicos: ",
+                            style = TextStyle(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.DarkGray
+                            )
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        PhoneCard(support!!.cliente.telefono_1)
+                        Spacer(Modifier.height(5.dp))
+                        support!!.cliente.telefono_2?.let { PhoneCard(it) }
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            "Direccion: ${support!!.cliente.direccion}",
+                            style = TextStyle(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.DarkGray
+                            )
+                        )
                         Spacer(Modifier.height(5.dp))
                     }
                 }

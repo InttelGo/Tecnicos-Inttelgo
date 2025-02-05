@@ -59,6 +59,9 @@ class UploadImageViewModel : ViewModel(){
     private val _tipoI = MutableStateFlow<Plan?>(null)
     val tipoI: StateFlow<Plan?> = _tipoI
 
+    private val _uploadImageState = MutableStateFlow(false)
+    val uploadImageState: StateFlow<Boolean> = _uploadImageState
+
 
     private val TAG ="UploadImageViewModel"
 
@@ -71,48 +74,38 @@ class UploadImageViewModel : ViewModel(){
         idTicket: String,
         type: String,
         idTec: String,
-        articlesState: SnapshotStateList<Articulo>,
-        elapsedTime: MutableIntState,
-        uploadProgress: MutableState<Float>,
-        onProgress: (Float) -> Unit = {},
-    ){
-        var flag = false;
-        if(type == "Proceso"){
-            for(i in 0 until  articlesState.size){
-                Log.d("Inventario uploadImage", "Articulo: ${articlesState[i].descripcion} Cantidad: ${articlesState[i].cantidad}")
-                if(articlesState[i].cantidad == 0 && i < articlesState.size-4){
-                    flag = false
-                    break
-                }else if(i >= articlesState.size-4 && articlesState[i].cantidad > 0 && articlesState.size>5){
-                    flag = true
-                    break
-                }else{
-                    flag = true
-                }
+        articlesState: SnapshotStateList<Articulo>
+    ) {
+        var flag = false
+        if (type == "Proceso") {
+            for (i in articlesState.indices) {
+                Log.d(
+                    "Inventario uploadImage",
+                    "Articulo: ${articlesState[i].descripcion} Cantidad: ${articlesState[i].cantidad}"
+                )
+                flag = !(articlesState[i].cantidad == 0 && i < articlesState.size - 4)
             }
-        }else{
+        } else {
             flag = true
         }
-
-        if(observation.value.isEmpty() || (imagesUpload.value.isEmpty()  && type != "Proceso")){
+        if (observation.value.isEmpty() || (imagesUpload.value.isEmpty() && type != "Proceso")) {
             _errorMessage.value = "Todos los campos son requeridos"
             _warningMessage.value = null
-        }else{
-            if(flag){
+        } else {
+            if (flag) {
                 val service = RetroFitServiceFactory.makeRetroFitService()
                 viewModelScope.launch(Dispatchers.IO) {
-                    val result = modifyInstalacion(service, observation, idTicket, type, idTec, elapsedTime)
+                    val result = modifyInstalacion(service, observation, idTicket, type, idTec)
                     val regex = "[^0-9]".toRegex()
-                    if(result < 0 && regex.containsMatchIn(result.toString())){
+                    if (result < 0 && regex.containsMatchIn(result.toString())) {
                         _errorMessage.value = "Error en la consulta de la base de datos"
-                    }else{
-                        if(type == "Proceso"){
+                    } else {
+                        if (type == "Proceso") {
                             addInventary(idTicket, articlesState, service)
                             Log.d(TAG, "prueba de proceso")
-                            uploadProgress.value = 1F
                         }
-                        if(type!="Proceso"){
-                            val totalImages = imagesUpload.value.size.toFloat()
+                        if (type != "Proceso") {
+                            Log.d(TAG, "prueba de carga")
                             generateImage(
                                 context,
                                 imagesUpload,
@@ -120,20 +113,17 @@ class UploadImageViewModel : ViewModel(){
                                 result,
                                 type,
                                 idTec,
-                                uploadProgress,
-                                onProgress,
-                                totalImages,
                             )
                         }
                     }
                 }
-            }else{
-                if(articlesState.size>5){
-                    _warningMessage.value = "Los servicios que incluyen telefonia deben incluir al menos un splitter"
+            } else {
+                if (articlesState.size > 5) {
+                    _warningMessage.value =
+                        "Los servicios que incluyen telefonía deben incluir al menos un splitter"
                     _errorMessage.value = null
-
-                }else{
-                    _warningMessage.value = "Todos los articulos deben estar incluidos"
+                } else {
+                    _warningMessage.value = "Todos los artículos deben estar incluidos"
                     _errorMessage.value = null
                 }
             }
@@ -148,11 +138,8 @@ class UploadImageViewModel : ViewModel(){
         idObs: Int,
         type: String,
         idTec: String,
-        onProgress: MutableState<Float>,
-        uploadProgress: (Float) -> Unit,
-        totalImages: Float,
     ){
-        var progress = 0F
+        Log.d(TAG, "prueba de carga")
         val client = OkHttpClient() // Usa el cliente fuera del bucle
         val result2 = locationService.getUserLocation(context)
         if(result2 != null){
@@ -192,14 +179,12 @@ class UploadImageViewModel : ViewModel(){
                             .post(requestBody)
                             .build()
                         val response = client.newCall(request).execute()
-                        if(response.isSuccessful){
-                            onProgress.value++
-                            progress += onProgress.value / totalImages
-                            Log.d(TAG, progress.toString())
-                            uploadProgress(progress) // Update progress callback
-                        }
                         if(type=="Proceso"){
                             this.getImages(idTicket)
+                        }
+                        Log.d(TAG, response.body.toString())
+                        if(response.isSuccessful){
+                            _uploadImageState.value = true
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "$uri: ${e.localizedMessage}", e)
@@ -222,11 +207,6 @@ class UploadImageViewModel : ViewModel(){
                     "&idArticle=${article.id_articulo}" +
                     "&cantidad=${article.cantidad}" +
                     "&idIn=$idTicket")
-            Log.d("Inventario addInventary", "https://app.inttelgo.com/Tecnicos/" +
-                    "?pid=${RetroFitService.encodeToBase64("pages/ticket.php")}" +
-                    "&idArticle=${article.id_articulo}" +
-                    "&cantidad=${article.cantidad}" +
-                    "&idIn=$idTicket")
         }
     }
     @SuppressLint("NewApi", "DefaultLocale")
@@ -235,8 +215,7 @@ class UploadImageViewModel : ViewModel(){
         observation: MutableState<String>,
         idTicket: String,
         type: String,
-        idTec: String,
-        elapsedTime: MutableIntState
+        idTec: String
     ): Int {
         if(type=="Proceso"){
             return service.setObs("https://app.inttelgo.com/Tecnicos/" +
@@ -261,8 +240,6 @@ class UploadImageViewModel : ViewModel(){
     fun getArticles(type: String){
         val service = RetroFitServiceFactory.makeRetroFitService()
         viewModelScope.launch(Dispatchers.IO) {
-            Log.d("getArticles", "https://app.inttelgo.com/Tecnicos/" +
-                    "?pid=${RetroFitService.encodeToBase64("pages/articulo.php")}&type=$type")
             val result = service.getArticles("https://app.inttelgo.com/Tecnicos/" +
                     "?pid=${RetroFitService.encodeToBase64("pages/articulo.php")}&type=$type")
             if(result.success){
@@ -343,16 +320,18 @@ class UploadImageViewModel : ViewModel(){
     }
 
 
+    // Se mantiene el uso de Geocoder, pero agrega un manejo explícito de compatibilidad
+    @SuppressLint("NewApi")
     private fun getAddressFromCoordinates(context: Context, latitude: Double, longitude: Double): String? {
         return try {
-            val geocoder = Geocoder(context, Locale.getDefault())
+            val geocoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Geocoder(context, Locale.getDefault())
+            } else {
+                Geocoder(context, Locale.getDefault())
+            }
             val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-
-            // Verifica si hay resultados y devuelve la dirección
             if (!addresses.isNullOrEmpty()) {
-                val address = addresses[0]
-                // Combina los campos de la dirección para formar un string legible
-                address.getAddressLine(0)
+                addresses[0].getAddressLine(0)
             } else {
                 "Dirección no encontrada"
             }
@@ -361,6 +340,7 @@ class UploadImageViewModel : ViewModel(){
             null
         }
     }
+
     private fun trimAfterThirdComma(input: String): String {
         val parts = input.split(",") // Divide el string en partes por las comas
         return if (parts.size > 3) {

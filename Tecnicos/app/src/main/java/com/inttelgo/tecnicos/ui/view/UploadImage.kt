@@ -126,6 +126,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
     val hasInternetConnection = rememberNetworkConnectivityState(context)
     val uploadProgress = remember { mutableFloatStateOf(0f) }
     val articlesState = remember { mutableStateListOf<Articulo>() }
+    val imagesState = viewModelI.uploadImageState.collectAsState()
     if(type == "Proceso"){
         LaunchedEffect (Unit){
             viewModelI.getImages(id)
@@ -159,8 +160,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
             )
         }
     ) { innerPadding ->
-        if(uploadProgress.floatValue >= 1F){
-            uploadProgress.floatValue=0F
+        if(imagesState.value){
             success.value = true
         }
         if (uploadProgress.floatValue > 0) {
@@ -290,12 +290,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                                         id,
                                         type,
                                         it,
-                                        articlesState,
-                                        elapsedTime,
-                                        uploadProgress,
-                                        onProgress = { progress ->
-                                            uploadProgress.floatValue = progress
-                                        }
+                                        articlesState
                                     )
                                 }
                         }
@@ -480,9 +475,6 @@ private fun OpenCameraScreen(
                                 idObs = 0,
                                 type = type,
                                 idTec = it,
-                                onProgress = mutableFloatStateOf(0f),
-                                uploadProgress = { _ -> /* Handle progress */ },
-                                totalImages = 0f
                             )
                         }
                     }
@@ -550,10 +542,7 @@ private fun PhotoSelectorView(
                             idTicket = id,
                             idObs = 0,
                             type = type,
-                            idTec = it,
-                            onProgress = mutableFloatStateOf(0f),
-                            uploadProgress = { _ -> /* Handle progress */ },
-                            totalImages = 0f
+                            idTec = it
                         )
                     }
                 }
@@ -752,3 +741,5 @@ fun CircularCountUpTimer(elapsedTime: MutableState<Int>) {
         }
     }
 }
+
+

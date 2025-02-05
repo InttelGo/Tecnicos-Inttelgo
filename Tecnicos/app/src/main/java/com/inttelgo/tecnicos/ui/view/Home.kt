@@ -3,6 +3,7 @@ package com.inttelgo.tecnicos.ui.view
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -62,6 +63,7 @@ import com.inttelgo.tecnicos.components.AlertCard
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.InternetAccess
+import com.inttelgo.tecnicos.components.PhoneCard
 import com.inttelgo.tecnicos.components.PrioritiesCard
 import com.inttelgo.tecnicos.components.PriorityCard
 import com.inttelgo.tecnicos.components.SearchInput
@@ -249,8 +251,8 @@ private fun Soport(
                         Text(
                             text = "Barrio: $barrio",
                             style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold
                             )
                         )
                         Spacer(Modifier.height(10.dp))
@@ -310,8 +312,10 @@ private fun Soport(
                                             Text(
                                                 ticket.tipo.descripcion,
                                                 style = TextStyle(
-                                                    fontSize = 14.sp,
-                                                    textAlign = TextAlign.Center
+                                                    fontSize = 15.sp,
+                                                    textAlign = TextAlign.Center,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = Color.DarkGray
                                                 )
                                             )
                                         }
@@ -322,17 +326,55 @@ private fun Soport(
                                     Spacer(Modifier.width(15.dp))
                                     Column{
                                         Spacer(Modifier.height(5.dp))
-                                        Text("#Cliente: ${ticket.cliente.nroCliente}")
-                                        Spacer(Modifier.height(5.dp))
-                                        Text("Cliente: ${ticket.cliente.nombre_1} ${ticket.cliente.apellido_1}")
-                                        Spacer(Modifier.height(5.dp))
-                                        Text("Telefonos: " +
-                                                ticket.cliente.telefono_1
+                                        Text(
+                                            "#Cliente: ${ticket.cliente.nroCliente}",
+                                            style = TextStyle(
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.DarkGray
+                                            )
                                         )
                                         Spacer(Modifier.height(5.dp))
-                                        Text("Direccion: ${ticket.cliente.direccion}")
+                                        Text(
+                                            "Cliente: ${ticket.cliente.nombre_1} ${ticket.cliente.apellido_1}",
+                                            style = TextStyle(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.DarkGray
+                                            )
+                                        )
                                         Spacer(Modifier.height(5.dp))
-                                        Text("Observacion: ${ticket.observacion_u}")
+
+                                        Text(
+                                            "Telefonos: ",
+                                            style = TextStyle(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.DarkGray
+                                            )
+                                        )
+                                        Spacer(Modifier.height(5.dp))
+                                        PhoneCard(ticket.cliente.telefono_1)
+                                        Spacer(Modifier.height(5.dp))
+                                        ticket.cliente.telefono_2?.let { PhoneCard(it) }
+                                        Spacer(Modifier.height(5.dp))
+                                        Text(
+                                            "Direccion: ${ticket.cliente.direccion}",
+                                            style = TextStyle(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.DarkGray
+                                            )
+                                        )
+                                        Spacer(Modifier.height(5.dp))
+                                        Text(
+                                            "Observacion: ${ticket.observacion_u}",
+                                            style = TextStyle(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.DarkGray
+                                            )
+                                        )
                                     }
                                 }
                                 Spacer(Modifier.height(5.dp))
@@ -403,9 +445,15 @@ private fun Process(
                         process.value!!.nombre,
                     )
                     Spacer(Modifier.height(5.dp))
-                    Text(
-                        process.value!!.telefonos,
-                    )
+                    val numerosSeparados = process.value!!.telefonos.toString()
+
+                    Log.d("Tecnico", process.value.toString())
+                    // Convertir los números de cadena a enteros
+                    val numero1 = numerosSeparados.substring(0, numerosSeparados.length/2)
+                    val numero2 = numerosSeparados.substring(numerosSeparados.length/2, numerosSeparados.length)
+                    PhoneCard(numero1.toString())
+                    Spacer(Modifier.height(5.dp))
+                    PhoneCard(numero2.toString())
                     Spacer(Modifier.height(5.dp))
                     Text(
                         process.value!!.direccion,

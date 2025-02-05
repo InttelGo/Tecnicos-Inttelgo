@@ -4,6 +4,7 @@ package com.inttelgo.tecnicos.ui.viewmodel
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inttelgo.tecnicos.logic.Model.Data
@@ -30,10 +31,16 @@ class LoginViewModel : ViewModel() {
             viewModelScope.launch {
                 try {
                     val result = service.getUserData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&username=$username&password=$password")
-                    _userData.value = result.data
-                    val userPreferences = UserPreferences(context)
-                    userPreferences.saveUser(result.data.id_usuario)
-                    navigateToHome()
+                    if(result.success){
+                        _userData.value = result.data
+                        val userPreferences = UserPreferences(context)
+                        userPreferences.saveUser(result.data.id_usuario)
+                        Log.d("Ubicación obtenida", result.data.toString())
+                        result.data.color?.let { userPreferences.saveColor(it) }
+                        navigateToHome()
+                    }else{
+                        _errorMessage.value = "Usuario o contraseña incorrectos"
+                    }
                 } catch (e: Exception) {
                     _errorMessage.value = e.message }
             }

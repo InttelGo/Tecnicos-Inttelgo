@@ -9,6 +9,7 @@ class UserPreferences (context: Context){
 
     companion object {
         const val KEY_ID = "username"
+        const val KEY_COLOR= "#000000"
     }
 
     fun saveUser(id: String) {
@@ -18,7 +19,16 @@ class UserPreferences (context: Context){
         }
     }
 
+    fun saveColor(color: String){
+        sharedPreferences.edit().apply {
+            putString(KEY_COLOR, color)
+            apply()
+        }
+    }
+
     fun getId(): String? = sharedPreferences.getString(KEY_ID, null)
+
+    fun getColor(): String? = sharedPreferences.getString(KEY_COLOR, "#000000")
 
     fun clearUser() {
         sharedPreferences.edit().remove("username").apply()
