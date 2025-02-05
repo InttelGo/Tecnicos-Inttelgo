@@ -4,4 +4,5 @@ data class Data(
     val apellido_1: String?,
     val id_usuario: String,
     val nombre_1: String?,
+    val color: String?
 )

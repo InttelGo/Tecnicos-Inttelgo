@@ -6,5 +6,6 @@ data class Cliente(
     val direccion: String,
     val nombre_1: String,
     val telefono_1: String,
+    val telefono_2: String? =null,
     val barrio: String
 )

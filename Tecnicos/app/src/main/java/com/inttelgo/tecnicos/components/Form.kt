@@ -1,7 +1,10 @@
 package com.inttelgo.tecnicos.components
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -17,6 +20,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +30,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -157,10 +165,49 @@ fun SearchInput(search: MutableState<String>, onClick: () -> Unit){
         }
     )
 }
+@Composable
+fun PhoneCard(number: String) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier
+            .clickable {
+                // Copiar al portapapeler
+                copyToClipboard(context, number)
 
+                // llamada e instancia a fotos con el numero
+                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+                context.startActivity(intent)
+            },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(9.dp),
+        elevation = CardDefaults.cardElevation(8.dp)
+    ) {
+        Row(
+            Modifier.padding(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                number,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 15.sp
+            )
+            Spacer(modifier = Modifier.width(8.dp)) // Add some spacing between text and icon
+            Icon(
+                painter = painterResource(R.drawable.content_copy_icon),
+                contentDescription = null,
+                tint = Color.DarkGray,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
 
-
-
+// Function to copy to clipboard (you might have this defined elsewhere)
+fun copyToClipboard(context: Context, text: String) {
+    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clipData = ClipData.newPlainText("Numero Telefonico", text)
+    clipboardManager.setPrimaryClip(clipData)
+}
 @Composable
 fun TextButtonForm(text: String, isPrimary: Boolean, onClick: () -> Unit) {
     Box(
