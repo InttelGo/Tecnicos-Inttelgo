@@ -96,6 +96,7 @@ class UploadImageViewModel : ViewModel(){
                 val service = RetroFitServiceFactory.makeRetroFitService()
                 viewModelScope.launch(Dispatchers.IO) {
                     val result = modifyInstalacion(service, observation, idTicket, type, idTec)
+                    Log.d(TAG, result.toString())
                     val regex = "[^0-9]".toRegex()
                     if (result < 0 && regex.containsMatchIn(result.toString())) {
                         _errorMessage.value = "Error en la consulta de la base de datos"
@@ -226,6 +227,13 @@ class UploadImageViewModel : ViewModel(){
                     "&date='${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}'"
             )
         }else{
+            Log.d(TAG, "https://app.inttelgo.com/Tecnicos/" +
+                    "?pid=${RetroFitService.encodeToBase64("pages/obs_ticket.php")}" +
+                    "&obs='${observation.value}'" +
+                    "&idT=$idTicket" +
+                    "&date='${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}'" +
+                    "&tipo=$type"+
+                    "&idTec=$idTec")
             return service.setObs("https://app.inttelgo.com/Tecnicos/" +
                     "?pid=${RetroFitService.encodeToBase64("pages/obs_ticket.php")}" +
                     "&obs='${observation.value}'" +
@@ -291,8 +299,10 @@ class UploadImageViewModel : ViewModel(){
         val inputStream = context.contentResolver.openInputStream(uri)
         val originalBitmap = BitmapFactory.decodeStream(inputStream)
         inputStream?.close()
+        Log.d(TAG, "prueba de imagen 1")
 
         if (originalBitmap == null) {
+            Log.d(TAG, "prueba de imagen 2")
             throw IllegalArgumentException("No se pudo decodificar el bitmap de la URI proporcionada")
         }
 
@@ -305,16 +315,18 @@ class UploadImageViewModel : ViewModel(){
         val aspectRatio = originalBitmap.width.toFloat() / originalBitmap.height.toFloat()
         // la funcion pair realiza un retorno de dos valores posibles, en este caso el ancho y el alto
         val (targetWidth, targetHeight) = if (originalBitmap.width > originalBitmap.height) Pair(maxWidth, (maxWidth / aspectRatio).toInt()) else Pair((maxHeight * aspectRatio).toInt(), maxHeight)
-
+        Log.d(TAG, "prueba de imagen 3")
         val resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, targetWidth, targetHeight, true)
 
         val file = File(
             context.cacheDir,
             "$idSupport ${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth} ${currentDate.hour}.${currentDate.minute}.${currentDate.second}.jpg"
         )
+        Log.d(TAG, "prueba de imagen 4: $file")
 
         val outputStream = FileOutputStream(file)
         resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream) // Comprime la imagen con calidad del 90%
+        Log.d(TAG, "prueba de imagen 5: $file")
         outputStream.close()
         return file
     }

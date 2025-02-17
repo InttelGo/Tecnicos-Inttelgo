@@ -282,6 +282,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                         if(hasInternetConnection.value){
                             val userPreferences = UserPreferences(context)
                                 userPreferences.getId()?.let {
+                                    Log.d("UsuarioId", it)
                                     // Llamar a viewModelI.uploadImage con la ubicación
                                     viewModelI.uploadImages(
                                         context,

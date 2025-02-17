@@ -30,12 +30,15 @@ class LoginViewModel : ViewModel() {
             val service = RetroFitServiceFactory.makeRetroFitService()
             viewModelScope.launch {
                 try {
+                    Log.d("LoginViewModel", "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&username=$username&password=$password")
                     val result = service.getUserData("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/iniciarSesion.php")}&username=$username&password=$password")
                     if(result.success){
                         _userData.value = result.data
                         val userPreferences = UserPreferences(context)
-                        userPreferences.saveUser(result.data.id_usuario)
+                            userPreferences.saveUser(result.data.id_usuario)
+
                         Log.d("Ubicación obtenida", result.data.toString())
+                        result.data.nombre_1?.let { userPreferences.saveName(it)}
                         result.data.color?.let { userPreferences.saveColor(it) }
                         navigateToHome()
                     }else{
