@@ -8,13 +8,20 @@ class UserPreferences (context: Context){
         context.getSharedPreferences("UserPreferences", Context.MODE_PRIVATE)
 
     companion object {
-        const val KEY_ID = "username"
+        const val KEY_ID = "123"
+        const val KEY_NAME = "username"
         const val KEY_COLOR= "#000000"
     }
 
     fun saveUser(id: String) {
         sharedPreferences.edit().apply {
             putString(KEY_ID, id)
+            apply()
+        }
+    }
+    fun saveName(name: String) {
+        sharedPreferences.edit().apply {
+            putString(KEY_NAME, name)
             apply()
         }
     }
@@ -28,9 +35,11 @@ class UserPreferences (context: Context){
 
     fun getId(): String? = sharedPreferences.getString(KEY_ID, null)
 
+    fun getName(): String? = sharedPreferences.getString(KEY_NAME, null)
+
     fun getColor(): String? = sharedPreferences.getString(KEY_COLOR, "#000000")
 
     fun clearUser() {
-        sharedPreferences.edit().remove("username").apply()
+        sharedPreferences.edit().remove("123").apply()
     }
 }
