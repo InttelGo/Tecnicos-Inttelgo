@@ -136,7 +136,7 @@ private fun calculateHourDifference(inputDate: LocalDateTime): Long {
 
 
 @Composable
-fun ButtonWithText(text: String, idIcon: Int, s: Dp, onClick: () -> Unit){
+fun ButtonWithText(text: String, idIcon: Int, s: Dp, enabled: Boolean, onClick: () -> Unit){
     Column (
         modifier = Modifier
            .width(80.dp),
@@ -148,6 +148,7 @@ fun ButtonWithText(text: String, idIcon: Int, s: Dp, onClick: () -> Unit){
             modifier = Modifier
                 .size(s*2)
                 //.background(Color.Black)
+            , enabled = enabled
         ) {
             Icon(
                 painter = painterResource(idIcon),

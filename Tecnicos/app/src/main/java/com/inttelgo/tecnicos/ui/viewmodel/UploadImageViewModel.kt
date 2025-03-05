@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.location.Geocoder
 import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.MutableIntState
@@ -14,13 +15,17 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.ReturnCode
 import com.inttelgo.tecnicos.logic.Model.Articulo
 import com.inttelgo.tecnicos.logic.Model.Picture
 import com.inttelgo.tecnicos.logic.Model.Plan
 import com.inttelgo.tecnicos.logic.Model.RetroFitService
 import com.inttelgo.tecnicos.logic.RetroFitServiceFactory
 import com.inttelgo.tecnicos.logic.persistence.Localizacion
+import com.inttelgo.tecnicos.logic.persistence.showNotification
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -29,11 +34,15 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class UploadImageViewModel : ViewModel(){
 
@@ -43,6 +52,9 @@ class UploadImageViewModel : ViewModel(){
 
     private val _checkTipoI = MutableStateFlow<Boolean>(false)
     val checkTipoI: StateFlow<Boolean> = _checkTipoI
+
+    private val _isUploadingFile = MutableStateFlow(false)
+    val isUploadingFile: StateFlow<Boolean> = _isUploadingFile
 
     private val _checkArticles = MutableStateFlow<Boolean>(false)
     val checkArticles: StateFlow<Boolean> = _checkArticles
@@ -74,7 +86,8 @@ class UploadImageViewModel : ViewModel(){
         idTicket: String,
         type: String,
         idTec: String,
-        articlesState: SnapshotStateList<Articulo>
+        articlesState: SnapshotStateList<Articulo>,
+        onUploadComplete: () -> Unit
     ) {
         var flag = false
         if (type == "Proceso") {
@@ -114,14 +127,16 @@ class UploadImageViewModel : ViewModel(){
                                 result,
                                 type,
                                 idTec,
-                            )
+                            ){}
                         }
                     }
                 }
+                if(type == "Proceso"){
+                    _uploadImageState.value = true
+                }
             } else {
                 if (articlesState.size > 5) {
-                    _warningMessage.value =
-                        "Los servicios que incluyen telefonía deben incluir al menos un splitter"
+                    _warningMessage.value = "Los servicios que incluyen telefonía deben incluir al menos un splitter"
                     _errorMessage.value = null
                 } else {
                     _warningMessage.value = "Todos los artículos deben estar incluidos"
@@ -132,69 +147,189 @@ class UploadImageViewModel : ViewModel(){
     }
 
     @SuppressLint("NewApi")
-    suspend fun  generateImage(
+    suspend fun generateImage(
         context: Context,
         imagesUpload: MutableState<List<Uri?>>,
         idTicket: String,
         idObs: Int,
         type: String,
         idTec: String,
-    ){
-        Log.d(TAG, "prueba de carga")
-        val client = OkHttpClient() // Usa el cliente fuera del bucle
+        onUploadComplete: () -> Unit // Para redireccionar si es necesario
+    ) {
+        _isUploadingFile.value = true
+        val client = OkHttpClient()
         val result2 = locationService.getUserLocation(context)
-        if(result2 != null){
-            Log.d(TAG, result2.latitude.toString())
-            Log.d(TAG, result2.longitude.toString())
+
+        if (result2 != null) {
+            val totalFiles = imagesUpload.value.count { it != null }
+            var uploadedFiles = 0
+            Log.d(TAG, "Total de archivos a subir: $totalFiles")
 
             var address = getAddressFromCoordinates(context, result2.latitude, result2.longitude)
+            address = address?.let { trimAfterThirdComma(it) } ?: "Ubicación desconocida"
 
-            if (address != null) {
-                address = trimAfterThirdComma(address)
-                Log.d(TAG, address)
-                for (uri in imagesUpload.value) {
-                    val currentDate = LocalDateTime.now()
-                    if (uri == null) continue // Ignora valores nulos en la lista
-                    try {
-                        // Convertir URI a archivo
-                        val file = uriToFile(context, uri, idTicket, currentDate)
+            for (uri in imagesUpload.value) {
+                val currentDate = LocalDateTime.now()
+                if (uri == null) continue
 
-                        // Crear cuerpo de solicitud
-                        val requestBody = MultipartBody.Builder()
+                try {
+                    val file = uriToFile(context, uri, idTicket, currentDate, address)
+                    val requestBody = file?.let {
+                        MultipartBody.Builder()
                             .setType(MultipartBody.FORM)
-                            .addFormDataPart(
-                                "image",
-                                file.name,
-                                RequestBody.create("image/*".toMediaType(), file)
-                            )
+                            .addFormDataPart("image", it.name, it.asRequestBody("image/*".toMediaType()))
                             .addFormDataPart("idObs", idObs.toString())
-                            .addFormDataPart("date",currentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                            .addFormDataPart("date", currentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                             .addFormDataPart("tipo", type)
                             .addFormDataPart("idTec", idTec)
                             .addFormDataPart("idIn", idTicket)
                             .addFormDataPart("ubication", address)
                             .build()
-                        // Crear solicitud HTTP
-                        val request = Request.Builder()
-                            .url("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/upload.php")}")
-                            .post(requestBody)
-                            .build()
-                        val response = client.newCall(request).execute()
-                        if(type=="Proceso"){
-                            this.getImages(idTicket)
-                        }
-                        Log.d(TAG, response.body.toString())
-                        if(response.isSuccessful){
-                            _uploadImageState.value = true
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "$uri: ${e.localizedMessage}", e)
                     }
+
+                    val request = Request.Builder()
+                        .url("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/upload.php")}")
+                        .post(requestBody!!)
+                        .build()
+
+                    val response = client.newCall(request).execute()
+
+                    if (response.isSuccessful) {
+                        uploadedFiles++
+                        Log.d(TAG, "Archivo subido: $uploadedFiles/$totalFiles")
+
+                        // Si se subieron todos los archivos y NO es un soporte, salir de la vista
+                        if (uploadedFiles == totalFiles && type != "Proceso") {
+                            _isUploadingFile.value = false
+                            _uploadImageState.value = true
+                            Log.d(TAG, "🚀 Todas las imágenes fueron subidas, navegando fuera de la vista.")
+                        }
+
+                        delay(1000) // Pequeño retraso entre cada subida para estabilidad
+                    }
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error subiendo archivo: ${e.localizedMessage}", e)
                 }
-            } else {
-                Log.d(TAG, "No se pudo obtener la dirección.")
             }
         }
+    }
+
+
+
+    @SuppressLint("NewApi")
+    private suspend fun compressVideo(
+        context: Context,
+        inputUri: Uri,
+        idSupport: String,
+        currentDate: LocalDateTime,
+        address: String
+    ): File? {
+        _isUploadingFile.value = true
+        return suspendCoroutine { continuation ->
+            val inputPath =
+                getPathFromUri(context, inputUri) ?: return@suspendCoroutine continuation.resume(
+                    null
+                )
+
+            val inputFile = File(inputPath)
+            val inputSize = inputFile.length() / 1024 // Tamaño en KB
+
+            Log.d("VideoCompression", "Tamaño inicial: ${inputSize}KB")
+
+            // Archivo temporal intermedio codificado en H.264
+            val h264File = File(context.cacheDir, "encoded_h264.mp4")
+            val h264Path = h264File.absolutePath
+
+            Log.d(
+                "VideoCompression",
+                "Ruta de salida H.264: $h264Path, puede escribir: ${h264File.canWrite()}, existe: ${h264File.exists()}"
+            )
+
+
+            // Comando para codificar a H.264
+            val encodeCommand =
+                "-y -i $inputPath -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -strict experimental -b:a 100k $h264Path"
+
+            FFmpegKit.executeAsync(encodeCommand) { encodeSession ->
+                if (ReturnCode.isSuccess(encodeSession.returnCode)) {
+                    Log.d("VideoCompression", "Codificación a H.264 completada")
+
+                    Log.d(
+                        "VideoCompression",
+                        "$idSupport-${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth}-${currentDate.hour}.${currentDate.minute}.${currentDate.second}.mp4"
+                    )
+                    // Archivo de salida comprimido
+                    val outputFile = File(
+                        context.cacheDir,
+                        "$idSupport-${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth}-${currentDate.hour}.${currentDate.minute}.${currentDate.second}.mp4"
+                    )
+                    val outputPath = outputFile.absolutePath
+
+                    // Comando de compresión
+                    val compressCommand =
+                        "-y -i $h264Path -vf \"scale=480:854,drawtext=fontfile=/system/fonts/Roboto-Regular.ttf:text='$address':x=10:y=30:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5\" -vcodec libx264 -crf 28 -preset fast -b:v 800k -c:a aac -b:a 128k $outputPath"
+                    Log.d(
+                        "VideoCompression",
+                        "Comando de compresión: -y -i $h264Path -vf \"scale=480:854, drawtext=text='$address':x=10:y=30:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5\" -vcodec libx264 -crf 28 -preset fast -b:v 800k -c:a aac -b:a 128k $outputPath"
+                    )
+
+                    val checkFormatCommand = "-i $inputPath"
+                    FFmpegKit.executeAsync(checkFormatCommand) { checkSession ->
+                        Log.d(
+                            "VideoCompression",
+                            "Detalles del archivo: ${checkSession.allLogsAsString}"
+                        )
+                    }
+                    FFmpegKit.executeAsync(compressCommand) { compressSession ->
+                        if (ReturnCode.isSuccess(compressSession.returnCode)) {
+                            val outputSize = outputFile.length() / 1024 // Tamaño final en KB
+                            Log.d("VideoCompression", "Tamaño después de la compresión: ${outputSize}KB")
+
+                            // 🔔 Mostrar notificación de éxito
+                            showNotification(context, "Video Enviado", "El video se ha comprimido y enviado correctamente.")
+                            _isUploadingFile.value = false
+                            continuation.resume(outputFile)
+                        } else {
+                            Log.e("VideoCompression", "Error en la compresión: ${compressSession.failStackTrace}")
+                            _isUploadingFile.value = false
+                            continuation.resume(null)
+                        }
+                    }
+
+                } else {
+                    Log.e(
+                        "VideoCompression",
+                        "Error en la codificación a H.264: ${encodeSession.allLogsAsString}"
+                    )
+                    _isUploadingFile.value = false
+                    continuation.resume(null)
+                }
+            }
+        }
+    }
+
+    private fun getPathFromUri(context: Context, uri: Uri): String? {
+        val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+        inputStream?.use { input ->
+            val file = File(context.cacheDir, getFileName(context, uri))
+            FileOutputStream(file).use { output ->
+                input.copyTo(output)
+            }
+            return file.absolutePath
+        }
+        return null
+    }
+
+    private fun getFileName(context: Context, uri: Uri): String {
+        var name = "temp_file.mp4"
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex != -1) {
+                name = cursor.getString(nameIndex)
+            }
+        }
+        return name
     }
 
     private suspend fun addInventary(
@@ -295,39 +430,48 @@ class UploadImageViewModel : ViewModel(){
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun uriToFile(context: Context, uri: Uri, idSupport: String, currentDate: LocalDateTime): File {
+    private suspend fun uriToFile(context: Context, uri: Uri, idSupport: String, currentDate: LocalDateTime, adress: String): File? {
+        val contentResolver = context.contentResolver
+        val mimeType = contentResolver.getType(uri)
+
+        return when {
+            mimeType?.startsWith("image") == true -> compressImage(context, uri, idSupport, currentDate)
+            mimeType?.startsWith("video") == true -> compressVideo(context, uri, idSupport, currentDate, adress)
+            else -> throw IllegalArgumentException("Formato de archivo no compatible")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun compressImage(context: Context, uri: Uri, idSupport: String, currentDate: LocalDateTime): File {
+        _isUploadingFile.value = true
         val inputStream = context.contentResolver.openInputStream(uri)
         val originalBitmap = BitmapFactory.decodeStream(inputStream)
         inputStream?.close()
-        Log.d(TAG, "prueba de imagen 1")
 
         if (originalBitmap == null) {
-            Log.d(TAG, "prueba de imagen 2")
             throw IllegalArgumentException("No se pudo decodificar el bitmap de la URI proporcionada")
         }
 
-        //tamaño máximo permitido
         val maxWidth = 800
         val maxHeight = 800
-
-        // Escala proporcional
-        // Condicion: Imagen acostada (Horizontal)  si no la cumple realiza el reescalado normalmenteImagen vertical o cuadrada
         val aspectRatio = originalBitmap.width.toFloat() / originalBitmap.height.toFloat()
-        // la funcion pair realiza un retorno de dos valores posibles, en este caso el ancho y el alto
-        val (targetWidth, targetHeight) = if (originalBitmap.width > originalBitmap.height) Pair(maxWidth, (maxWidth / aspectRatio).toInt()) else Pair((maxHeight * aspectRatio).toInt(), maxHeight)
-        Log.d(TAG, "prueba de imagen 3")
+        val (targetWidth, targetHeight) = if (originalBitmap.width > originalBitmap.height) {
+            Pair(maxWidth, (maxWidth / aspectRatio).toInt())
+        } else {
+            Pair((maxHeight * aspectRatio).toInt(), maxHeight)
+        }
+
         val resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, targetWidth, targetHeight, true)
 
         val file = File(
             context.cacheDir,
             "$idSupport ${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth} ${currentDate.hour}.${currentDate.minute}.${currentDate.second}.jpg"
         )
-        Log.d(TAG, "prueba de imagen 4: $file")
 
         val outputStream = FileOutputStream(file)
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream) // Comprime la imagen con calidad del 90%
-        Log.d(TAG, "prueba de imagen 5: $file")
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
         outputStream.close()
+        _isUploadingFile.value = false
         return file
     }
 

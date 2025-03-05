@@ -1,10 +1,13 @@
 package com.inttelgo.tecnicos.ui.view
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -37,17 +41,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImagePainter
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.rememberAsyncImagePainter
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AlertCard
@@ -55,7 +66,6 @@ import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.FloatingButtons
 import com.inttelgo.tecnicos.components.InternetAccess
 import com.inttelgo.tecnicos.components.PhoneCard
-import com.inttelgo.tecnicos.components.TextButtonForm
 import com.inttelgo.tecnicos.components.WarningCard
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.Picture
@@ -69,6 +79,9 @@ fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id:
     val showHistory = remember { mutableStateOf(false) }
     val support by viewModelS.supportData.collectAsState()
     val supportcheck by viewModelS.supportCheck.collectAsState()
+    val pictureList by viewModelS.pictureList.collectAsState()
+    val picturesCheck by viewModelS.picturesCheck.collectAsState()
+    val showDialog = remember { mutableStateOf(false) }
     Scaffold (
         topBar = {
             TopAppBar(
@@ -210,8 +223,13 @@ fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id:
                 }
 
                 if(showHistory.value){
-                    ListObs(viewModelS, idSuport, context)
+                    ListObs(viewModelS, idSuport, context, showDialog)
                 }
+            }
+        }
+        if(showDialog.value){
+            MediaPreview(pictureList){
+                showDialog.value = false
             }
         }
     }
@@ -219,16 +237,18 @@ fun SupportScreen(idSuport: String, context: Context,navigateToUploadImage: (id:
 
 
 @Composable
-fun ListObs(viewModelS: SupportViewModel, idSuport: String, context: Context){
-    val showDialog = remember { mutableStateOf(false) }
+fun ListObs(
+    viewModelS: SupportViewModel,
+    idSuport: String,
+    context: Context,
+    showDialog: MutableState<Boolean>
+){
     val hasInternetConnection = rememberNetworkConnectivityState(context)
     if(hasInternetConnection.value){
         LaunchedEffect(Unit) {
             viewModelS.getObs(idSuport)
         }
     }
-    val pictureList by viewModelS.pictureList.collectAsState()
-    val picturesCheck by viewModelS.picturesCheck.collectAsState()
     val listCheck by viewModelS.listCheck.collectAsState()
     val observationList by viewModelS.observationList.collectAsState()
     val errorMessage by viewModelS.errorMessage.collectAsState()
@@ -241,9 +261,7 @@ fun ListObs(viewModelS: SupportViewModel, idSuport: String, context: Context){
             AnimatedIcon()
         }
     }else{
-        if(picturesCheck){
-            ImageAlertDialog(pictureList, showDialog)
-        }
+
             LazyColumn (
                 Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -324,88 +342,83 @@ fun ListObs(viewModelS: SupportViewModel, idSuport: String, context: Context){
 }
 
 @Composable
-private fun ImageAlertDialog(imageUrls: List<Picture>?, showDialog: MutableState<Boolean>, title: String = "Imágenes") {
-    val totalImages = imageUrls?.size
+fun MediaPreview(imageUrls: List<Picture>?, onClose: () -> Unit) {
+    val totalImages = imageUrls?.size ?: 0
     val imagenActual = remember { mutableIntStateOf(0) }
-    // AlertDialog con imágenes
-    if (showDialog.value) {
-        AlertDialog(
-            containerColor = Color.White,
-            onDismissRequest = {
-                showDialog.value = false
-                               },
-            title = {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Black
-                )
-            },
-            text = {
-                val painter = rememberAsyncImagePainter(
-                    model = imageUrls?.get(imagenActual.intValue)!!.foto,
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Error) {
-                            Log.e("Coil", "Error al cargar la imagen: ${state.result.throwable}")
-                        }
-                    }
-                )
-                Column (
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ){
-                    Row (
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                            .aspectRatio(1f)
-                    ){
-                        //Boton de retroceso
-                        if(imagenActual.intValue > 0){
-                            Box (
-                                modifier = Modifier
-                                    .clickable { imagenActual.intValue-- }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.arrow_circle_left_icon),
-                                    contentDescription = "Close icon",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                        }
-                        Image(
-                            painter = painter,
-                            contentDescription = "Imagen desde la web",
-                            modifier = Modifier.width(250.dp),
-                            contentScale = ContentScale.Fit // Ajustar imagen sin recortar
-                        )
-                        //Boton de avanzar
-                        if(imagenActual.intValue < totalImages!!-1){
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Box (
-                                modifier = Modifier
-                                    .clickable { imagenActual.intValue++ }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.arrow_circle_right_icon),
-                                    contentDescription = "Close icon",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
+    var currentUrl by remember { mutableStateOf(imageUrls?.getOrNull(imagenActual.intValue)?.foto) }
+
+    // Actualizar la URL cuando cambia la imagen
+    LaunchedEffect(imagenActual.intValue) {
+        currentUrl = imageUrls?.getOrNull(imagenActual.intValue)?.foto
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Transparent)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    if (dragAmount > 0 && imagenActual.intValue > 0) {
+                        imagenActual.intValue--
+                    } else if (dragAmount < 0 && imagenActual.intValue < totalImages - 1) {
+                        imagenActual.intValue++
                     }
                 }
             },
-            confirmButton = {
-                TextButtonForm("Cerrar", true){
-                    imagenActual.intValue=0
-                    showDialog.value = false
-                }
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.8f))
+                .clickable { onClose() }, // Cerrar al hacer clic en cualquier parte
+            contentAlignment = Alignment.Center
+        ) {
+                    currentUrl?.let { url ->
+                        if (url.endsWith(".mp4", ignoreCase = true)) {
+                            VideoPlayer(videoUrl = url)
+                        } else {
+                            Image(
+                                painter = rememberAsyncImagePainter(url),
+                                contentDescription = "Imagen desde la web",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(9f / 16f),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+        }
+    }
+}
+
+
+@Composable
+fun VideoPlayer(videoUrl: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(videoUrl)
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    AndroidView(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(9f / 16f), // Formato estándar de video
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
             }
-        )
+        }
+    )
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
     }
 }

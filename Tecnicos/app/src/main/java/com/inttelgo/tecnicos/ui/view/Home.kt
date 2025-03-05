@@ -475,7 +475,7 @@ private fun Process(
                     }
                     Spacer(Modifier.height(10.dp))
                     val textButton = if(process.value!!.fecha_ini == null) "Iniciar Proceso" else "Continuar Proceso"
-                    ButtonRainbow(textButton, Modifier.fillMaxWidth(), true) {
+                    ButtonRainbow(textButton, Modifier.fillMaxWidth(), true, true) {
                         /*
                         * Iniciar el proceso de instalacion
                         *
