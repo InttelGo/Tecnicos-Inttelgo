@@ -71,6 +71,18 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.viewmodel)
 
+
+    //Reproductor
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    
+    //ffmpeg
+    implementation ("com.arthenica:ffmpeg-kit-full-gpl:6.0")
+
+    //Animations
+    implementation (libs.lottie.compose)
+
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

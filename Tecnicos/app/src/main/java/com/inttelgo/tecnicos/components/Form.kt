@@ -1,6 +1,5 @@
 package com.inttelgo.tecnicos.components
 
-import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -9,13 +8,6 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
-import android.os.Build
-import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,10 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import com.inttelgo.tecnicos.R
-import java.io.File
-import java.time.LocalDateTime
 
 @Composable
 fun TextFlieldCustom (title: String, content: MutableState<String>, w: Dp ){
@@ -103,9 +92,16 @@ fun PassFlied(password: MutableState<String>, title: String,w: Dp) {
 }
 
 @Composable
-fun ButtonRainbow(text: String, modifier: Modifier, flag: Boolean, onClick: () -> Unit){
+fun ButtonRainbow(
+    text: String,
+    modifier: Modifier,
+    flag: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+){
     androidx.compose.material3.Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         shadowElevation = 4.dp,
         modifier = modifier
@@ -281,13 +277,16 @@ fun NumberField(
     number: Int,
     label: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean,
     onChange: (Int) -> Unit
+
 ) {
     // Convertimos el número inicial a texto, permitiendo vacío si es necesario
     val textValue = remember { mutableStateOf(number.toString()) }
 
     OutlinedTextField(
         value = textValue.value,
+        enabled = enabled,
         onValueChange = { newValue ->
             textValue.value = newValue // Actualizamos el texto
             val parsedNumber = newValue.toIntOrNull() // Convertimos a Int si es posible
