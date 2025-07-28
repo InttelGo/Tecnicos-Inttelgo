@@ -35,26 +35,30 @@ class MainActivity : ComponentActivity() {
             if (allGranted) {
                 startLocationService()
             } else {
-                Toast.makeText(this, "Permisos denegados. La ubicación no estará disponible.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Permisos denegados. Algunas funciones no estarán disponibles.", Toast.LENGTH_LONG).show()
             }
         }
 
     private fun requestPermissionsIfNeeded() {
-        if (!checkPermissions()) {
-            requestPermissionsLauncher.launch(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
+        val permissionsToRequest = mutableListOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        // Si el dispositivo es Android 13+, agregamos el permiso de notificación
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        if (!checkPermissions(permissionsToRequest)) {
+            requestPermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
             startLocationService()
         }
     }
 
-    private fun checkPermissions(): Boolean {
-        return checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED &&
-                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    private fun checkPermissions(permissions: List<String>): Boolean {
+        return permissions.all { checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
     }
 
     @SuppressLint("NewApi")

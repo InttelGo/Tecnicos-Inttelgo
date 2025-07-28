@@ -5,25 +5,20 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.os.CountDownTimer
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,10 +30,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -47,20 +43,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -72,17 +66,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter
-import coil.compose.rememberAsyncImagePainter
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AlertCard
 import com.inttelgo.tecnicos.components.ButtonRainbow
 import com.inttelgo.tecnicos.components.ButtonWithText
 import com.inttelgo.tecnicos.components.InternetAccess
 import com.inttelgo.tecnicos.components.NumberField
-import com.inttelgo.tecnicos.components.TargetCustom
 import com.inttelgo.tecnicos.components.TextFlieldCustom
 import com.inttelgo.tecnicos.components.WarningCard
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
@@ -94,7 +93,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
-import java.time.LocalDateTime
 
 @RequiresApi(Build.VERSION_CODES.P)
 @Preview
@@ -118,22 +116,22 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
     val observation = remember { mutableStateOf("") }
     val textButton = remember { mutableStateOf("") }
     val showDialog = remember { mutableStateOf(false) }
-    val success = remember { mutableStateOf(false) }
-    val elapsedTime = remember { mutableIntStateOf(0) }
     val errorMessage = viewModelI.errorMessage.collectAsState()
     val warningMessage = viewModelI.warningMessage.collectAsState()
     val uploadedImagesList = viewModelI.uploadedImagesList.collectAsState()
+    val isUploadingFile = viewModelI.isUploadingFile.collectAsState()
+    val uploadImageState = viewModelI.uploadImageState.collectAsState()
     val hasInternetConnection = rememberNetworkConnectivityState(context)
     val uploadProgress = remember { mutableFloatStateOf(0f) }
     val articlesState = remember { mutableStateListOf<Articulo>() }
-    val imagesState = viewModelI.uploadImageState.collectAsState()
+    val isUploading = isUploadingFile.value
+    val showPreview = remember { mutableStateOf(false) }
+    val previewUri = remember { mutableStateOf<String?>(null) }
     if(type == "Proceso"){
         LaunchedEffect (Unit){
             viewModelI.getImages(id)
         }
     }
-    CircularCountUpTimer(elapsedTime)
-    AnimatedSuccessAlert(success, navigateToUp)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -160,9 +158,6 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
             )
         }
     ) { innerPadding ->
-        if(imagesState.value){
-            success.value = true
-        }
         if (uploadProgress.floatValue > 0) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -171,11 +166,38 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                 com.inttelgo.tecnicos.components.AnimatedIcon()
             }
         }else{
+
+            if (isUploadingFile.value) {
+                Log.d("VideoCompression", "Mostrando animación de carga")
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)), // Fondo gris semitransparente
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(80.dp),
+                            color = Color.White,
+                            strokeWidth = 6.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Subiendo archivos...",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .padding(innerPadding)
                     .padding(20.dp)
-                    .fillMaxSize()
+                    .fillMaxSize(),
+                userScrollEnabled = !isUploading
             ) {
                 //Conexion
                 item {
@@ -196,53 +218,61 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                         item {
                             CardWithBottomSheet(selectedImages, context, type, viewModelI, id)
                         }
-                        if(type=="Proceso"){
+                        items(selectedImages.value) { uri ->
+                            val typeM = uri?.let { getMediaType(context, it) }
+                            if (typeM?.startsWith("image") == true) {
+                                ImagePreview(uri.toString()) {
+                                    showPreview.value = true
+                                    previewUri.value = uri.toString()
+                                }
+                            } else if (typeM?.startsWith("video") == true) {
+                                VideoPreviewCard(uri, context) {
+                                    showPreview.value = true
+                                    previewUri.value = uri.toString()
+                                }
+                            }
+                        }
+                        if (type == "Proceso") {
                             uploadedImagesList.value?.let { list ->
                                 items(list) { picture ->
+                                    val imageUrl = picture?.foto ?: ""
+                                    val isVideo = imageUrl.endsWith(".mp4", ignoreCase = true)
+
                                     Card(
                                         modifier = Modifier
                                             .padding(10.dp)
                                             .fillMaxHeight()
-                                            .clickable(onClick = {
-                                                showDialog.value = true
-                                                imageSelected.value = picture?.foto.toString()
-                                            }),
+                                            .clickable {
+                                                showPreview.value = true
+                                                previewUri.value = imageUrl
+                                            },
                                         shape = RoundedCornerShape(8.dp),
                                         elevation = CardDefaults.cardElevation(8.dp),
                                         colors = CardDefaults.cardColors(containerColor = Color.White)
                                     ) {
-                                        AsyncImage(
-                                            model = picture?.foto, // La URL de la imagen
-                                            contentDescription = "Imagen cargada",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Fit,
-                                            onError = { error ->
-                                                Log.e("Coil", "Error al cargar la imagen: $error")
+                                        if (isVideo) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .background(Color.Black),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.PlayArrow,
+                                                    contentDescription = "Video",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(50.dp)
+                                                )
                                             }
-                                        )
+                                        } else {
+                                            AsyncImage(
+                                                model = imageUrl,
+                                                contentDescription = "Imagen cargada",
+                                                modifier = Modifier.fillMaxHeight(),
+                                                contentScale = ContentScale.Fit
+                                            )
+                                        }
                                     }
-                                }
-                            }
-                        }else{
-                            items(selectedImages.value) { uri ->
-                                Card(
-                                    modifier = Modifier
-                                        .padding(10.dp)
-                                        .fillMaxHeight()
-                                        .clickable(onClick = {
-                                            showDialog.value = true
-                                            imageSelected.value = uri
-                                        }),
-                                    shape = RoundedCornerShape(8.dp),
-                                    elevation = CardDefaults.cardElevation(8.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                                ) {
-                                    AsyncImage(
-                                        model = uri,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Fit
-                                    )
                                 }
                             }
                         }
@@ -268,7 +298,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                         if(checkArticles.value){
                             articlesState.clear() // Limpia los datos anteriores
                             articlesState.addAll(articles.value!!) // Agrega los nuevos artículos
-                            ProcessForm(tipoI.value!!.descripcion, articlesState)
+                            ProcessForm(tipoI.value!!.descripcion, articlesState, !isUploading)
                         }
                     }
                 }
@@ -278,194 +308,337 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                     "Soporte" -> textButton.value = "Agregar Observacion"
                 }
                 item{
-                    ButtonRainbow(textButton.value, Modifier.fillMaxWidth(), true) {
+                    ButtonRainbow(textButton.value, Modifier.fillMaxWidth(), true, !isUploading) {
                         if(hasInternetConnection.value){
                             val userPreferences = UserPreferences(context)
-                                userPreferences.getId()?.let {
-                                    Log.d("UsuarioId", it)
-                                    // Llamar a viewModelI.uploadImage con la ubicación
-                                    viewModelI.uploadImages(
-                                        context,
-                                        selectedImages,
-                                        observation,
-                                        id,
-                                        type,
-                                        it,
-                                        articlesState
-                                    )
+                            userPreferences.getId()?.let {
+                                Log.d("UsuarioId", it)
+                                // Llamar a viewModelI.uploadImage con la ubicación
+                                viewModelI.uploadImages(
+                                    context,
+                                    selectedImages,
+                                    observation,
+                                    id,
+                                    type,
+                                    it,
+                                    articlesState
+                                ){
                                 }
+                            }
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    ButtonRainbow("Cancelar", Modifier.fillMaxWidth(), false) {
+                    ButtonRainbow("Cancelar", Modifier.fillMaxWidth(), false, !isUploading) {
                         viewModelH.ActualizarEstadoI(id, 7, "",null){
                                 _: String, _: String ->
                         }
                         navigateToHome()
                     }
-                    ImageAlertDialog(
-                        imageSelected = imageSelected,
-                        showDialog = showDialog,
-                        title = "Imagen"
-                    )
+                }
+            }
+            if (isUploadingFile.value) {
+                Log.d("VideoCompression", "Mostrando animación de carga")
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)), // Fondo gris semitransparente
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(80.dp),
+                            color = Color.White,
+                            strokeWidth = 6.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Subiendo archivos...",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            if(uploadImageState.value ){
+                Log.d("VideoCompression", "Mostrando animación de confirmacion")
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)), // Fondo gris semitransparente
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        SuccessLottieAnimation(uploadImageState.value, navigateToUp, type)
 
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "$type, Ha sido creada con exito",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            if (showPreview.value) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.8f))
+                        .clickable { showPreview.value = false }, // Cerrar al hacer clic en cualquier parte
+                    contentAlignment = Alignment.Center
+                ) {
+                    previewUri.value?.let { uri ->
+                        val isVideo = uri.endsWith(".mp4", ignoreCase = true)
+
+                        if (isVideo) {
+                            VideoPlayer(uri, type, context)
+                        } else {
+                            AsyncImage(
+                                model = uri,
+                                contentDescription = "Previsualización de imagen",
+                                modifier = Modifier.fillMaxWidth().height(400.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+fun getMediaType(context: Context, uri: Uri): String? {
+    return context.contentResolver.getType(uri)
+}
 
 @Composable
-fun ImageAlertDialog(
-    imageSelected: MutableState<Any?>, // Acepta Uri o String (URL)
-    showDialog: MutableState<Boolean>,
-    title: String = "Imagen"
-) {
-    if (showDialog.value) {
-        AlertDialog(
-            containerColor = Color.White,
-            onDismissRequest = { showDialog.value = false },
-            title = {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Black
-                )
-            },
-            text = {
-                val painter = rememberAsyncImagePainter(
-                    model = when (val image = imageSelected.value) {
-                        is Uri -> image
-                        is String -> image
-                        else -> null
-                    },
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Error) {
-                            Log.e("Coil", "Error al cargar la imagen: ${state.result.throwable}")
-                        }
-                    }
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                ) {
-                    Image(
-                        painter = painter,
-                        contentDescription = "Imagen cargada",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = { showDialog.value = false }) {
-                    Text(text = "Cerrar")
-                }
-            }
+fun SuccessLottieAnimation(isSuccess: Boolean, navigateToUp: () -> Unit, type: String) {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.success_check))
+    val progress by animateLottieCompositionAsState(
+        composition,
+        isPlaying = isSuccess,
+        restartOnPlay = false
+    )
+
+    // Detecta el final de la animación y navega
+    LaunchedEffect(progress) {
+        if (progress == 1f ) {
+            navigateToUp()
+        }
+    }
+
+    LottieAnimation(
+        composition = composition,
+        progress = { progress },
+        modifier = Modifier.size(100.dp)
+    )
+}
+@Composable
+fun ImagePreview(imageUri: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxHeight()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        AsyncImage(
+            model = imageUri,
+            contentDescription = "Imagen seleccionada",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxHeight()
         )
     }
 }
 
+@Composable
+fun VideoPreviewCard(videoUri: Uri, context: Context, onClick: () -> Unit) {
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(videoUri))
+            prepare()
+        }
+    }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
 
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .width(50.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                }
+            },
+            modifier = Modifier.width(50.dp)
+        )
+    }
+}
+
+@Composable
+fun VideoPlayer(videoUri: String, type: String, context: Context) {
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = if (type == "Soporte") {
+                MediaItem.fromUri(videoUri)
+            } else {
+                MediaItem.fromUri(Uri.parse(videoUri))
+            }
+            setMediaItem(mediaItem)
+            prepare()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = true
+            }
+        },
+        modifier = Modifier.fillMaxWidth().height(400.dp)
+    )
+}
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardWithBottomSheet(
-    selectedImages: MutableState<List<Uri?>>,
+    selectedMedia: MutableState<List<Uri?>>,
     context: Context,
     type: String,
     viewModelI: UploadImageViewModel,
     id: String
 ) {
-    // Estado para controlar la visibilidad del Bottom Sheet
     val sheetState = rememberModalBottomSheetState()
     val showBottomSheet = remember { mutableStateOf(false) }
+    val hasPermissions = remember { mutableStateOf(false) }
 
-    // Tarjeta principal
+    val permissions = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+            arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            )
+        }
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+            arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        }
+        else -> {
+            arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+        }
+    }
+
+    val permissionRequest = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grantedPermissions ->
+        hasPermissions.value = grantedPermissions.values.all { it }
+    }
+
+    LaunchedEffect(Unit) {
+        permissionRequest.launch(permissions)
+    }
+
     Card(
         modifier = Modifier
             .padding(10.dp)
             .fillMaxHeight()
             .width(60.dp)
             .clickable {
-                showBottomSheet.value = !showBottomSheet.value
+                if (hasPermissions.value) {
+                    showBottomSheet.value = !showBottomSheet.value
+                } else {
+                    Toast.makeText(context, "Por favor, acepta los permisos.", Toast.LENGTH_LONG).show()
+                }
             },
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Box (
-            modifier = Modifier
-               .padding(10.dp)
-               .fillMaxSize(),
+        Box(
+            modifier = Modifier.padding(10.dp).fillMaxSize(),
             contentAlignment = Alignment.Center
-        ){
+        ) {
             Icon(
                 painter = painterResource(R.drawable.add_image_icon),
                 contentDescription = "Imagen Icon",
-                modifier = Modifier
-                    .size(50.dp),
+                modifier = Modifier.size(50.dp),
                 tint = Color.Black
             )
         }
     }
 
-    // Bottom Sheet
     if (showBottomSheet.value) {
         ModalBottomSheet(
-            onDismissRequest = {
-                showBottomSheet.value = false // Cierra el Bottom Sheet al tocar fuera
-            },
+            onDismissRequest = { showBottomSheet.value = false },
             sheetState = sheetState
         ) {
-            // Contenido del Bottom Sheet
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                //Take a picture
-                OpenCameraScreen(selectedImages, showBottomSheet, context,type, viewModelI, id)
-                Spacer(Modifier.width(10.dp))
-                //Select image to galery
-                PhotoSelectorView(10, selectedImages, context, type, viewModelI, id)
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+
+                        OpenCameraScreen(selectedMedia, showBottomSheet, context, type, viewModelI, id, hasPermissions.value)
+                    Spacer(Modifier.width(10.dp))
+
+                        OpenVideoCameraScreen(selectedMedia, showBottomSheet, context, type, viewModelI, id, hasPermissions.value)
+
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                        MediaSelectorView(10, selectedMedia, context, type, viewModelI, id, hasPermissions.value)
+                }
             }
         }
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun OpenCameraScreen(
-    photoUri: MutableState<List<Uri?>>,
+    selectedMedia: MutableState<List<Uri?>>,
     showBottomSheet: MutableState<Boolean>,
     context: Context,
     type: String,
     viewModelI: UploadImageViewModel,
-    id: String
+    id: String,
+    enabled: Boolean
 ) {
-    val hasCameraPermission = remember { mutableStateOf(false) }
+    val photoFile = remember { File(context.cacheDir, "photo_${System.currentTimeMillis()}.jpg") }
+    val photoUriProvider = FileProvider.getUriForFile(context, "${context.packageName}.provider", photoFile)
 
-    val cameraPermissionRequest = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasCameraPermission.value = isGranted
-    }
-
-    val photoFile = remember { File(context.cacheDir, "${LocalDateTime.now()}.jpg") }
-    // Uri para el archivo (utilizando FileProvider)
-    val photoUriProvider = FileProvider.getUriForFile( context, "${context.packageName}.provider", photoFile)
-
-    // Lanzador de la cámara
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
             if (success) {
-                if(type == "Proceso"){
+                if (type == "Proceso") {
                     val userPreferences = UserPreferences(context)
                     userPreferences.getId()?.let {
                         CoroutineScope(Dispatchers.IO).launch {
@@ -475,65 +648,80 @@ private fun OpenCameraScreen(
                                 idTicket = id,
                                 idObs = 0,
                                 type = type,
-                                idTec = it,
-                            )
+                                idTec = it
+                            ) {}
                         }
                     }
-                }else{
-                    photoUri.value += listOf(photoUriProvider)
+                } else {
+                    selectedMedia.value += listOf(photoUriProvider)
                 }
                 showBottomSheet.value = false
             }
         }
     )
-    // Solicitar permisos de medios según la versión
-    LaunchedEffect(Unit) {
-        if (!hasCameraPermission.value) {
-            cameraPermissionRequest.launch(Manifest.permission.CAMERA)
-        }
+    ButtonWithText("Tomar Foto", R.drawable.photo_icon, 40.dp, enabled) {
+        launcher.launch(photoUriProvider)
     }
-    // Solicitar permiso de cámara si no está otorgado
-    ButtonWithText("Tomar Foto", R.drawable.photo_icon, 40.dp) {
-        if(!hasCameraPermission.value){
-            Log.d("PhotoSelector", "Permissions are not granted.")
-            Toast.makeText(context, "Por favor, acepta los permisos para acceder a la camara.", Toast.LENGTH_LONG).show()
-        }else{
-            launcher.launch(photoUriProvider)
+}
+
+
+@Composable
+private fun OpenVideoCameraScreen(
+    selectedMedia: MutableState<List<Uri?>>,
+    showBottomSheet: MutableState<Boolean>,
+    context: Context,
+    type: String,
+    viewModelI: UploadImageViewModel,
+    id: String,
+    enabled: Boolean
+) {
+    val videoFile = remember { File(context.cacheDir, "video_${System.currentTimeMillis()}.mp4") }
+    val videoUriProvider = FileProvider.getUriForFile(context, "${context.packageName}.provider", videoFile)
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CaptureVideo(),
+        onResult = { success ->
+            if (success) {
+                if (type == "Proceso") {
+                    val userPreferences = UserPreferences(context)
+                    userPreferences.getId()?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            viewModelI.generateImage(
+                                context = context,
+                                imagesUpload = mutableStateOf(listOf(videoUriProvider)),
+                                idTicket = id,
+                                idObs = 0,
+                                type = type,
+                                idTec = it
+                            ) {}
+                        }
+                    }
+                } else {
+                    selectedMedia.value += listOf(videoUriProvider)
+                }
+                showBottomSheet.value = false
+            }
         }
+    )
+    ButtonWithText("Grabar Video", R.drawable.video_icon, 40.dp, enabled) {
+        launcher.launch(videoUriProvider)
     }
 }
 
 @Composable
-private fun PhotoSelectorView(
+private fun MediaSelectorView(
     maxSelectionCount: Int = 10,
-    selectedImages: MutableState<List<Uri?>>,
+    selectedMedia: MutableState<List<Uri?>>,
     context: Context,
     type: String,
     viewModelI: UploadImageViewModel,
-    id: String
+    id: String,
+    enabled: Boolean
 ) {
-    val hasMediaPermissions = remember { mutableStateOf(false) }
-
-    val singlePhotoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> selectedImages.value += listOf(uri) }
-    )
-
-    val mediaPermissionRequest = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        hasMediaPermissions.value = permissions.values.all { it }
-        Log.d("PhotoSelector", "Permissions granted: ${hasMediaPermissions.value}")
-    }
-
-    val multiplePhotoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = if (maxSelectionCount > 1) {
-            maxSelectionCount
-        } else {
-            2
-        }),
+    val mediaPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = maxSelectionCount),
         onResult = { uris ->
-            if(type == "Proceso"){
+            if (type == "Proceso") {
                 val userPreferences = UserPreferences(context)
                 userPreferences.getId()?.let {
                     CoroutineScope(Dispatchers.IO).launch {
@@ -544,115 +732,26 @@ private fun PhotoSelectorView(
                             idObs = 0,
                             type = type,
                             idTec = it
-                        )
+                        ) {}
                     }
                 }
-            }else{
-                selectedImages.value += uris
-            }
-        }
-    )
-
-    fun launchPhotoPicker() {
-        if (hasMediaPermissions.value) {
-            if (maxSelectionCount > 1) {
-                multiplePhotoPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
             } else {
-                singlePhotoPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
+                selectedMedia.value += uris
             }
-        } else {
-            Log.d("PhotoSelector", "Permissions are not granted.")
-            Toast.makeText(context, "Por favor, acepta los permisos para acceder a la galería.", Toast.LENGTH_LONG).show()
         }
-    }
-
-    LaunchedEffect(Unit) {
-        if (!hasMediaPermissions.value) {
-            val permissions = when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    arrayOf(
-                        Manifest.permission.READ_MEDIA_IMAGES,
-                        Manifest.permission.READ_MEDIA_VIDEO,
-                        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
-                    )
-                }
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                    arrayOf(
-                        Manifest.permission.READ_MEDIA_IMAGES,
-                        Manifest.permission.READ_MEDIA_VIDEO
-                    )
-                }
-                else -> {
-                    arrayOf(
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    )
-                }
-            }
-            Log.d("PhotoSelector", "Requesting permissions...")
-            mediaPermissionRequest.launch(permissions)
-        }
-    }
-
-    ButtonWithText("Galería", R.drawable.image_icon, 40.dp) {
-        Log.d("PhotoSelector", "Button clicked, attempting to launch picker.")
-        launchPhotoPicker()
-    }
-}
-
-
-@Composable
-private fun AnimatedSuccessAlert(showDialog: MutableState<Boolean>, navigateToUp: () -> Unit) {
-    if (showDialog.value) {
-        AlertDialog(
-            containerColor = Color.White,
-            onDismissRequest = { showDialog.value = false },
-            title = { Text("Observacion creada!") },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    AnimatedIcon()
-                    Spacer(Modifier.height(10.dp))
-                    Text("Tu transaccion ha sido un exito.")
-                }
-            },
-            confirmButton = {
-                TargetCustom("Aceptar", true) {
-                    showDialog.value = false
-                    navigateToUp()
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun AnimatedIcon() {
-    val infiniteTransition = rememberInfiniteTransition(label = "")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000)
-        ), label = ""
     )
-    Icon(
-        painter = painterResource(id = R.drawable.verified_icon),
-        contentDescription = "Success",
-        modifier = Modifier.size(70.dp).scale(scale),
-        tint = Color.Green
-    )
+
+    ButtonWithText("Seleccionar Foto/Video", R.drawable.image_icon, 40.dp, enabled ) {
+        mediaPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+    }
+
 }
 
 @Composable
 private fun ProcessForm(
     type: String,
-    articles: SnapshotStateList<Articulo>
+    articles: SnapshotStateList<Articulo>,
+    enabled: Boolean
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -701,7 +800,8 @@ private fun ProcessForm(
                     NumberField(
                         number = articulo.cantidad,
                         label = "Cantidad" + if(articulo.id_articulo.toInt() in 109..111)  "( Opcional )" else "",
-                        modifier = Modifier.width(screenWidth * 0.55f)
+                        modifier = Modifier.width(screenWidth * 0.55f),
+                        enabled = enabled
                     ) { newCantidad ->
                         val index = articles.indexOf(articulo)
                         if (index != -1) {
@@ -713,34 +813,3 @@ private fun ProcessForm(
         }
     }
 }
-
-@SuppressLint("UnrememberedMutableState", "DefaultLocale")
-@Composable
-fun CircularCountUpTimer(elapsedTime: MutableState<Int>) {
-    val isRunning = remember { mutableStateOf(true) }
-    var timer: CountDownTimer? by remember { mutableStateOf(null) }
-
-    // Inicializar el cronómetro automáticamente al inicio
-    LaunchedEffect(Unit) {
-        if (isRunning.value) {
-            val totalTimeInSeconds = 76800
-            timer = object : CountDownTimer(
-                totalTimeInSeconds * 1000L,  // Tiempo total
-                1000
-            ) {
-                override fun onTick(millisUntilFinished: Long) {
-                    elapsedTime.value += 1 // Incrementa el tiempo transcurrido en segundos
-                    if (elapsedTime.value >= totalTimeInSeconds) {
-                        onFinish() // Forzar la finalización cuando se alcance el tiempo límite
-                    }
-                }
-                override fun onFinish() {
-                    TODO("Not yet implemented")
-                }
-            }
-            timer?.start()
-        }
-    }
-}
-
-
