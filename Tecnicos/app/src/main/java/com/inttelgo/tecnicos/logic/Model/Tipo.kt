@@ -1,7 +1,7 @@
 package com.inttelgo.tecnicos.logic.Model
 
 data class Tipo(
-    val descripcion: String,
-    val id_tipo_ticket: String,
-    val icon: String
+    val id: String = "",
+    val descripcion: String = "",
+    val nombre_icono: String = ""
 )

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Configuración para desarrollo local -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.1.2</domain>
+        <domain includeSubdomains="true">192.168.1.43</domain>
+    </domain-config>
+    
+    <!-- Configuración para internetdedicado.com.co con certificado expirado (SOLO DESARROLLO) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">internetdedicado.com.co</domain>
+        <trust-anchors>
+            <!-- Permite certificados no válidos (solo para desarrollo) -->
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+    
+    <!-- Configuración base para otros dominios -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

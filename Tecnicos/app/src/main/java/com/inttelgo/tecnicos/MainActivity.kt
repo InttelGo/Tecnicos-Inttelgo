@@ -12,6 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import com.inttelgo.tecnicos.logic.persistence.LocationService
 import com.inttelgo.tecnicos.navigation.AppNavigation
+import com.inttelgo.tecnicos.network.RetrofitClient
+import com.inttelgo.tecnicos.ui.theme.TecnicosTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -21,11 +23,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Inicializar RetrofitClient con el contexto
+        RetrofitClient.initialize(this)
+
         // Verificar y solicitar permisos de ubicación
         requestPermissionsIfNeeded()
 
         setContent {
-            AppNavigation(this)
+            TecnicosTheme (darkTheme = false) {
+                AppNavigation(this)
+            }
         }
     }
 

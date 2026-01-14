@@ -1,12 +1,18 @@
 package com.inttelgo.tecnicos.logic.Model
 
 data class Proceso(
-    val direccion: String,
-    val fecha_r: String,
-    val fecha_ini: String? =null,
-    val id_estado_instalacion: String,
-    val id_instalacion: String ="",
-    val nombre: String,
-    val observacion: Observacion,
-    val telefonos: String
+    val id: Int? = null,
+    val identificacion: String? = null,
+    val nombre: String? = null,
+    val direccion: String? = null,
+    val telefonos: String? = null,
+    val fecha_r: String = "",
+    val fecha_ini: String = "",
+    val estado: EstadoInstalacion? = null,
+    val barrio: Barrio? = null,
+    val plan: Plan? = null,
+    val usuario_creacion: Usuario?=null,
+    val usuario_inicio: Usuario?=null,
+    val usuario_finalizacion: Usuario?=null,
+    val observacion: Observacion? = null,
 )

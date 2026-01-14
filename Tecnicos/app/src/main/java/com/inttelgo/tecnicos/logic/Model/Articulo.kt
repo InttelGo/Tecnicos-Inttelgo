@@ -1,8 +1,8 @@
 package com.inttelgo.tecnicos.logic.Model
 
 data class Articulo(
-    var cantidad: Int,
-    val descripcion: String,
-    val fecha_ingreso: String,
-    val id_articulo: String
+    val id: String = "",
+    val nombre: String = "",
+    var cantidad: Int = 0,
+    val fecha_ingreso: String = "",
 )

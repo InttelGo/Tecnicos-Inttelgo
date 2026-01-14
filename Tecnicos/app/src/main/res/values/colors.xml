@@ -1,10 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
+    <!-- Colores principales de la aplicación -->
+    <color name="primary">#FFFFA726</color>
+    <color name="primary_variant">#FFFF8F00</color>
+    <color name="secondary">#FFFF5722</color>
+    <color name="secondary_variant">#FFE64A19</color>
+
+    <!-- Colores base -->
     <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+
+    <!-- Tonos de gris para UI -->
+    <color name="gray_50">#FFFAFAFA</color>
+    <color name="gray_100">#FFF5F5F5</color>
+    <color name="gray_200">#FFEEEEEE</color>
+    <color name="gray_300">#FFE0E0E0</color>
+    <color name="gray_400">#FFBDBDBD</color>
+    <color name="gray_500">#FF9E9E9E</color>
+    <color name="gray_600">#FF757575</color>
+    <color name="gray_700">#FF616161</color>
+    <color name="gray_800">#FF424242</color>
+    <color name="gray_900">#FF212121</color>
+
+    <!-- Variantes del color principal (naranja) -->
+    <color name="orange_50">#FFFFF3E0</color>
+    <color name="orange_100">#FFFFE0B2</color>
+    <color name="orange_200">#FFFFCC80</color>
+    <color name="orange_300">#FFFFB74D</color>
+    <color name="orange_400">#FFFFA726</color> <!-- Color principal -->
+    <color name="orange_500">#FFFF9800</color>
+    <color name="orange_600">#FFFB8C00</color>
+    <color name="orange_700">#FFFF8F00</color>
+    <color name="orange_800">#FFEF6C00</color>
+    <color name="orange_900">#FFE65100</color>
+
+    <!-- Variantes del color secundario (rojo-naranja) -->
+    <color name="deep_orange_50">#FFFBE9E7</color>
+    <color name="deep_orange_100">#FFFFCCBC</color>
+    <color name="deep_orange_200">#FFFFAB91</color>
+    <color name="deep_orange_300">#FFFF8A65</color>
+    <color name="deep_orange_400">#FFFF7043</color>
+    <color name="deep_orange_500">#FFFF5722</color> <!-- Color secundario -->
+    <color name="deep_orange_600">#FFF4511E</color>
+    <color name="deep_orange_700">#FFE64A19</color>
+    <color name="deep_orange_800">#FFD84315</color>
+    <color name="deep_orange_900">#FFBF360C</color>
+
+    <!-- Colores de estado -->
+    <color name="success">#FF4CAF50</color>
+    <color name="warning">#FFFFA726</color>
+    <color name="error">#FFFF5722</color>
+    <color name="info">#FF2196F3</color>
+
+    <!-- Colores de superficie y fondo -->
+    <color name="surface">#FFFFFFFF</color>
+    <color name="background">#FFFAFAFA</color>
+    <color name="surface_variant">#FFF5F5F5</color>
+
+    <!-- Colores de texto -->
+    <color name="on_primary">#FF000000</color>
+    <color name="on_secondary">#FFFFFFFF</color>
+    <color name="on_surface">#FF212121</color>
+    <color name="on_background">#FF212121</color>
+    <color name="text_primary">#FF212121</color>
+    <color name="text_secondary">#FF757575</color>
+    <color name="text_hint">#FFBDBDBD</color>
+
+    <!-- Colores con transparencia para overlays -->
+    <color name="primary_alpha_10">#1AFFA726</color>
+    <color name="primary_alpha_20">#33FFA726</color>
+    <color name="secondary_alpha_10">#1AFF5722</color>
+    <color name="secondary_alpha_20">#33FF5722</color>
+    <color name="black_alpha_50">#80000000</color>
+    <color name="white_alpha_90">#E6FFFFFF</color>
+
+    <!-- Colores para componentes específicos -->
+    <color name="card_background">#FFFFFFFF</color>
+    <color name="divider">#FFE0E0E0</color>
+    <color name="ripple">#1AFFA726</color>
+    <color name="shadow">#1A000000</color>
+
+    <!-- Gradientes (para usar en código) -->
+    <color name="gradient_start">#FFFFA726</color>
+    <color name="gradient_end">#FFFF5722</color>
 </resources>

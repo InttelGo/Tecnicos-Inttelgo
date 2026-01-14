@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.inttelgo.tecnicos"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.inttelgo.tecnicos"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -37,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -47,6 +48,9 @@ dependencies {
     //Navigation
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+
+    //DataStore
+    implementation(libs.androidx.datastore.preferences)
 
     //Camera
     implementation (libs.androidx.camera.core)
@@ -75,13 +79,26 @@ dependencies {
     //Reproductor
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
+    implementation ("androidx.media3:media3-common:1.2.1")
     
-    //ffmpeg
-    implementation ("com.arthenica:ffmpeg-kit-full-gpl:6.0")
+    //Transcoder
+    implementation("com.otaliastudios:transcoder:0.10.5")
+
+    //Signature
+    implementation("com.github.gcacace:signature-pad:1.3.1")
 
     //Animations
     implementation (libs.lottie.compose)
 
+    //OkHTTP
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
+
+    //gson
+    implementation(libs.gson)
+
+    //noinspection NewerVersionAvailable
+    implementation (libs.hilt.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

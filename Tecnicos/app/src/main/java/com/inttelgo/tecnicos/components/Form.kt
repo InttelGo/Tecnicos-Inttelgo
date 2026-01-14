@@ -7,14 +7,12 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,16 +20,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -47,49 +54,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.inttelgo.tecnicos.R
-
-@Composable
-fun TextFlieldCustom (title: String, content: MutableState<String>, w: Dp ){
-    OutlinedTextField(
-        value = content.value,
-        shape = RoundedCornerShape(10.dp),
-        onValueChange = { content.value = it },
-        label = { Text(title) },
-        modifier = Modifier.width(w)
-    )
-}
-
-@Composable
-fun PassFlied(password: MutableState<String>, title: String,w: Dp) {
-    val flag = remember {
-        mutableStateOf(false)
-    }
-    OutlinedTextField(
-        shape = RoundedCornerShape(10.dp),
-        value = password.value,
-        modifier = Modifier.width(w),
-        onValueChange = { password.value = it },
-        label = { Text(title) },
-        visualTransformation = if (flag.value) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            val image = if (flag.value)
-                R.drawable.visibility_off_icon
-           else R.drawable.visibility_icon
-
-            IconButton(onClick = { flag.value = !flag.value }) {
-                Icon(
-                    painter = painterResource(image) ,
-                    tint = Color.Black,
-                    contentDescription = if (flag.value) "Hide password" else "Show password"
-                )
-            }
-        }
-    )
-}
+import androidx.core.net.toUri
 
 @Composable
 fun ButtonRainbow(
@@ -98,15 +66,15 @@ fun ButtonRainbow(
     flag: Boolean,
     enabled: Boolean,
     onClick: () -> Unit
-){
-    androidx.compose.material3.Surface(
+) {
+    Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(10.dp),
-        shadowElevation = 4.dp,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = if (enabled) 4.dp else 0.dp,
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp)
+            .height(56.dp)
     ) {
         Box(
             modifier = Modifier
@@ -114,12 +82,17 @@ fun ButtonRainbow(
                     if (flag) {
                         Modifier.background(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(Color(0xFFFFA726), Color(0xFFFF5722))
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.secondary
+                                )
                             )
                         )
-                    } else Modifier // No fondo para el secundario
+                    } else {
+                        Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                    }
                 )
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(16.dp))
         ) {
             Text(
                 text = text,
@@ -127,71 +100,370 @@ fun ButtonRainbow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.Center),
-                style = TextStyle(
-                    fontSize = 20.sp,
+                style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    color = if (flag) Color(0xFFffffff) else Color.Black
+                    color = if (flag) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
+            )
+        }
+    }
+}
+@Composable
+fun CustomButton(
+    isLoading: Boolean,
+    disabled: Boolean,
+    title: String,
+    chargeTitle: String,
+    disabledTitle: String,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = !isLoading && !disabled,
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = when {
+                disabled && !isLoading -> MaterialTheme.colorScheme.errorContainer
+                else -> MaterialTheme.colorScheme.primary
+            },
+            contentColor = when {
+                disabled && !isLoading -> MaterialTheme.colorScheme.onErrorContainer
+                else -> MaterialTheme.colorScheme.onPrimary
+            },
+            disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = if (disabled && !isLoading) 0.dp else 8.dp,
+            pressedElevation = 4.dp,
+            disabledElevation = 0.dp
+        )
+    ) {
+        when {
+            isLoading -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Text(
+                        text = chargeTitle,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+            disabled -> {
+                Text(
+                    text = disabledTitle,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+            else -> {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        }
+    }
+}
+@Composable
+fun TextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: ImageVector?,
+    placeholder: String,
+    required: Boolean = false
+) {
+    // Validar si el campo está vacío y es requerido
+    val isEmpty = value.trim().isEmpty()
+    val showError = required && isEmpty
+
+    Text(
+        text = if (showError) "$label *" else label,
+        style = MaterialTheme.typography.labelMedium.copy(
+            fontWeight = FontWeight.SemiBold,
+            color = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    )
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = {
+            Text(
+                text = placeholder,
+                color = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        },
+        leadingIcon = {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        isError = showError,
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant,
+            errorBorderColor = MaterialTheme.colorScheme.error,
+            focusedContainerColor = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.05f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+            unfocusedContainerColor = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.02f) else MaterialTheme.colorScheme.surfaceVariant,
+            errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
+            cursorColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+        )
+    )
+
+    // Mensaje de error
+    if (showError) {
+        Text(
+            text = "Este campo es obligatorio",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Medium
+            ),
+            modifier = Modifier.padding(start = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    required: Boolean = false
+) {
+    val isEmpty = value.trim().isEmpty()
+    val showError = required && isEmpty
+
+    val passwordVisible = remember { mutableStateOf(false) }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    color = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                )
+            },
+            trailingIcon = {
+                val image = if (passwordVisible.value)
+                    R.drawable.visibility_off_icon
+                else R.drawable.visibility_icon
+
+                IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+                    Icon(
+                        painter = painterResource(image),
+                        tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        contentDescription = if (passwordVisible.value) "Hide password" else "Show password"
+                    )
+                }
+            },
+            visualTransformation = if (passwordVisible.value)
+                VisualTransformation.None
+            else
+                PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                focusedContainerColor = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.05f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                unfocusedContainerColor = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.02f) else MaterialTheme.colorScheme.surfaceVariant,
+                errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
+                cursorColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+        )
+
+        if (showError) {
+            Text(
+                text = "Este campo es obligatorio",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
+                ),
+                modifier = Modifier.padding(start = 16.dp)
             )
         }
     }
 }
 
 @Composable
-fun SearchInput(search: MutableState<String>, onClick: () -> Unit){
+fun TextArea(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    placeholder: String = "",
+    required: Boolean = false,
+    isError: Boolean = false,
+    enabled: Boolean = true,
+    minLines: Int = 3,
+    maxLines: Int = 6,
+    leadingIcon: ImageVector? = null
+) {
+    val isEmpty = value.trim().isEmpty()
+    val showError = (required && isEmpty) || isError
 
-    OutlinedTextField(
-        shape = RoundedCornerShape(10.dp),
-        value = search.value,
-        modifier = Modifier.width(350.dp),
-        onValueChange = { search.value = it },
-        label = { Text("Buscar") },
-        trailingIcon = {
-            IconButton(
-                onClick = onClick,
-                modifier = Modifier.size(25.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search_icon),
-                    contentDescription = "Search icon",
-                    tint = Color.Black, // Aplica un color base al ícono
-                    modifier = Modifier.fillMaxSize() // Asegúrate de que el ícono ocupe todo el espacio del contenedor
+    Column (
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Label
+        label?.let {
+            Text(
+                text = if (required && isEmpty) "$it *" else it,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
+            )
         }
-    )
+
+        // TextArea
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    color = if (showError) MaterialTheme.colorScheme.error.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            leadingIcon = leadingIcon?.let { icon ->
+                {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = when {
+                            showError -> MaterialTheme.colorScheme.error
+                            !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    )
+                }
+            },
+            enabled = enabled,
+            isError = showError,
+            minLines = minLines,
+            maxLines = maxLines,
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                focusedContainerColor = if (showError)
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+                else
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                unfocusedContainerColor = if (showError)
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.02f)
+                else if (enabled)
+                    MaterialTheme.colorScheme.surfaceVariant
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+                errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
+                cursorColor = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+        )
+
+        // Mensaje de error
+        if (showError && required && isEmpty) {
+            Text(
+                text = "Este campo es obligatorio",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
+                ),
+                modifier = Modifier.padding(start = 16.dp)
+            )
+        }
+    }
 }
+
 @Composable
 fun PhoneCard(number: String) {
     val context = LocalContext.current
-    Card(
-        modifier = Modifier
-            .clickable {
-                // Copiar al portapapeler
-                copyToClipboard(context, number)
-
-                // llamada e instancia a fotos con el numero
-                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
-                context.startActivity(intent)
-            },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(9.dp),
-        elevation = CardDefaults.cardElevation(8.dp)
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        onClick = {
+            copyToClipboard(context, number)
+            // llamada e instancia a fotos con el numero
+            val intent = Intent(Intent.ACTION_DIAL, "tel:${number}".toUri())
+            context.startActivity(intent)
+        },
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+        modifier = Modifier.padding(end = 8.dp)
     ) {
         Row(
-            Modifier.padding(5.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 number,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 15.sp
+                fontSize = 15.sp,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
             )
             Spacer(modifier = Modifier.width(8.dp)) // Add some spacing between text and icon
             Icon(
                 painter = painterResource(R.drawable.content_copy_icon),
                 contentDescription = null,
-                tint = Color.DarkGray,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -204,43 +476,6 @@ fun copyToClipboard(context: Context, text: String) {
     val clipData = ClipData.newPlainText("Numero Telefonico", text)
     clipboardManager.setPrimaryClip(clipData)
 }
-@Composable
-fun TextButtonForm(text: String, isPrimary: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clickable { onClick() }
-            .then(
-                if (isPrimary) {
-                    Modifier.background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(Color(0xFFFFA726), Color(0xFFFF5722))
-                        ),
-                        shape = RoundedCornerShape(50.dp)
-                    )
-                } else Modifier // No fondo para el secundario
-            )
-            .border(
-                width = if (isPrimary) 0.dp else 0.dp,
-                color = if (isPrimary) Color.White else Color.Black,
-                shape = RoundedCornerShape(50.dp)
-            )
-    ) {
-        Text(
-            text = text,
-            style = TextStyle(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = if(isPrimary)Color.White else Color.Black
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(12.dp)
-        )
-    }
-}
-
-
 @Composable
 fun rememberNetworkConnectivityState(context: Context): State<Boolean> {
     val connectivityState = remember { mutableStateOf(false) }
@@ -265,7 +500,8 @@ fun rememberNetworkConnectivityState(context: Context): State<Boolean> {
 
         // Check initial connectivity state
         val isConnected = connectivityManager.activeNetwork?.let { network ->
-            connectivityManager.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            connectivityManager.getNetworkCapabilities(network)
+                ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         } ?: false
         connectivityState.value = isConnected
     }
@@ -277,28 +513,153 @@ fun NumberField(
     number: Int,
     label: String,
     modifier: Modifier = Modifier,
-    enabled: Boolean,
+    enabled: Boolean = true,
+    showButtons: Boolean = true,
+    minValue: Int = 0,
+    maxValue: Int = Int.MAX_VALUE,
+    required: Boolean = false,
     onChange: (Int) -> Unit
-
 ) {
-    // Convertimos el número inicial a texto, permitiendo vacío si es necesario
     val textValue = remember { mutableStateOf(number.toString()) }
+    val currentValue = remember { mutableIntStateOf(number) }
 
-    OutlinedTextField(
-        value = textValue.value,
-        enabled = enabled,
-        onValueChange = { newValue ->
-            textValue.value = newValue // Actualizamos el texto
-            val parsedNumber = newValue.toIntOrNull() // Convertimos a Int si es posible
-            if (parsedNumber != null) {
-                onChange(parsedNumber) // Notificamos cambios válidos
-            } else if (newValue.isEmpty()) {
-                onChange(0) // Notificamos que el número es 0 si el campo está vacío
-            }
-        },
-        label = { Text(label) },
+    // Validar si el campo está vacío y es requerido
+    val isEmpty = currentValue.intValue == 0 && required
+    val showError = required && isEmpty
+
+    // Sincronizamos el valor cuando cambia desde fuera
+    LaunchedEffect(number) {
+        currentValue.intValue = number
+        textValue.value = number.toString()
+    }
+
+    Column(
         modifier = modifier,
-        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
-    )
-}
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
 
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = textValue.value,
+                onValueChange = { newValue ->
+                    textValue.value = newValue
+                    when {
+                        newValue.isEmpty() -> {
+                            currentValue.intValue = minValue
+                            onChange(minValue)
+                        }
+                        newValue.toIntOrNull() != null -> {
+                            val parsedValue = newValue.toInt().coerceIn(minValue, maxValue)
+                            currentValue.intValue = parsedValue
+                            textValue.value = parsedValue.toString()
+                            onChange(parsedValue)
+                        }
+                    }
+                },
+                label = { Text(label) },
+                modifier = Modifier.weight(1f),
+                enabled = enabled,
+                isError = showError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                shape = if (showButtons) RoundedCornerShape(16.dp) else MaterialTheme.shapes.medium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = if (showError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = if (showError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.outlineVariant,
+                    errorBorderColor = MaterialTheme.colorScheme.error,
+                    focusedContainerColor = if (showError)
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+                    else
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                    unfocusedContainerColor = if (showError)
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.02f)
+                    else if (enabled)
+                        MaterialTheme.colorScheme.surfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+                    errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
+                    cursorColor = if (showError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                ),
+                placeholder = {
+                    Text(
+                        text = "0",
+                        color = if (showError)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            )
+
+            if (showButtons) {
+                IconButton(
+                    onClick = {
+                        val newValue = (currentValue.intValue - 1).coerceAtLeast(minValue)
+                        currentValue.intValue = newValue
+                        textValue.value = newValue.toString()
+                        onChange(newValue)
+                    },
+                    enabled = enabled && currentValue.intValue > minValue,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Decrementar",
+                        tint = if (showError)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            if (showButtons) {
+                IconButton(
+                    onClick = {
+                        val newValue = (currentValue.intValue + 1).coerceAtMost(maxValue)
+                        currentValue.intValue = newValue
+                        textValue.value = newValue.toString()
+                        onChange(newValue)
+                    },
+                    enabled = enabled && currentValue.intValue < maxValue,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Incrementar",
+                        tint = if (showError)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Mensaje de error
+        if (showError) {
+            Text(
+                text = "Este campo es obligatorio",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
+                ),
+                modifier = Modifier.padding(start = 16.dp)
+            )
+        }
+    }
+}

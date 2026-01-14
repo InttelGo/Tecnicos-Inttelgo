@@ -1,6 +1,0 @@
-package com.inttelgo.tecnicos.logic.Model
-
-data class ProcessResult(
-    val proceso: Proceso? = null,
-    val success: Boolean
-)

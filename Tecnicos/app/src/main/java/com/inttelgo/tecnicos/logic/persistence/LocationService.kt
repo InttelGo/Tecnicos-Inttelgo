@@ -5,7 +5,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -14,13 +13,20 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
-import com.inttelgo.tecnicos.logic.Model.RetroFitService
+import com.google.gson.Gson
+import com.inttelgo.tecnicos.logic.Model.Request.UbicationRequest
+import com.inttelgo.tecnicos.logic.repository.UsuarioRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import okhttp3.*
-import java.io.IOException
 
-class LocationService : Service() {
+class LocationService  (private val repository: UsuarioRepository = UsuarioRepository()) : Service() {
     private val TAG = "LocationService"
 
+    //Corrutina para las funciones suspendidas que requiera el servicio
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
@@ -107,34 +113,18 @@ class LocationService : Service() {
 
 
     private fun sendLocationToServer(location: Location) {
-        val userid = UserPreferences(this).getId()
-        val color = UserPreferences(this).getColor()
-        val name = UserPreferences(this).getName()
-        Log.d(TAG, "Ubicación obtenida: Lat=${location.latitude}, Lng=${location.longitude}, idUser=${userid}")
-        if(userid!=""){
-            val client = OkHttpClient()
-            val url = "https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/ubication.php")}"
-
-            val formBody = FormBody.Builder()
-                .add("latitud", location.latitude.toString())
-                .add("altitud", location.longitude.toString())
-                .add("id_usuario", userid.toString())
-                .add("nombre", name.toString())
-                .add("color", color.toString())
-                .build()
-            val request = Request.Builder()
-                .url(url)
-                .post(formBody)
-                .build()
-            Log.d(TAG, request.toString())
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    e.printStackTrace()
+        val user = UserPreferences(this).getUser()
+        Log.d(TAG, "Ubicación obtenida: Lat=${location.latitude}, Lng=${location.longitude}")
+        Log.d(TAG, user.toString())
+        if(user != null){
+            serviceScope.launch {
+                try {
+                    val result = repository.ubication(UbicationRequest(location.latitude, location.longitude) )
+                    Log.d(TAG, "Ubicación enviada exitosamente: ${result.body() }")
+                }catch (e: Exception){
+                    Log.e(TAG, "Error al enviar ubicación: ${e.message}", e)
                 }
-                override fun onResponse(call: Call, response: Response) {
-                    println("Respuesta del servidor: ${response.body?.string()}")
-                }
-            })
+            }
         }
     }
 }
