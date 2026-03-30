@@ -176,7 +176,6 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
                         }else{
                             _errorMessage.value = it.message
                         }
-
                     }
                 }else{
                     _errorMessage.value = "Error al consultar las instalaciones"
@@ -240,7 +239,8 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
 
     fun removeMedia(media: FotoInsta){
         viewModelScope.launch {
-            val result = repository.deleteImage(media.idFotoInsta)
+            Log.d(tag, media.toString())
+            val result = repository.deleteImage(media.id)
 
             if(result.isSuccessful){
                 result.body()?.let { it ->

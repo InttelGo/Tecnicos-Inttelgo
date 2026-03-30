@@ -70,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -90,8 +91,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDateTime
 import com.github.gcacace.signaturepad.views.SignaturePad
+import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.NumberField
+import com.inttelgo.tecnicos.components.SectionTitle
 import com.inttelgo.tecnicos.logic.Model.DialogType
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -139,7 +142,7 @@ fun Installation (
     }
 
     LazyColumn (
-        modifier = modifier){
+        modifier = modifier.padding(vertical = 16.dp)){
         item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -149,30 +152,10 @@ fun Installation (
                     ) {
 
                         Column(
-                            modifier = Modifier.padding(20.dp)
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Header with icon
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Media",
-                                    tint = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = if (!isFormValid) "Archivos multimedia *" else "Archivos multimedia",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                    )
-                                )
-                            }
-
-                            Spacer(Modifier.height(20.dp))
+                            SectionTitle(icon = R.drawable.ic_file, if (!isFormValid) "Archivos multimedia *" else "Archivos multimedia")
 
                             // Media row
                             LazyRow(
@@ -229,7 +212,7 @@ fun Installation (
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            imageVector = if (!isFormValid) Icons.Default.Warning else Icons.Default.Info,
+                                            painter = painterResource(if (!isFormValid) R.drawable.ic_octagon_alert else R.drawable.ic_info),
                                             contentDescription = null,
                                             tint = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(20.dp)
@@ -499,7 +482,7 @@ private fun CardWithBottomSheet(
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        imageVector = if (showError) Icons.Default.Warning else Icons.Default.Add,
+                        painter = painterResource( if (showError) R.drawable.ic_octagon_alert else R.drawable.ic_plus),
                         contentDescription = if (showError) "Requerido" else "Agregar",
                         tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
@@ -534,23 +517,8 @@ private fun CardWithBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         // Header
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                "Seleccionar medio",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            )
-                        }
+                        SectionTitle(icon = null, title = "Añadir Evidencia")
+
 
                         // Action buttons
                         Row(
@@ -645,7 +613,7 @@ private fun CameraScreen(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
+                    painter = painterResource(R.drawable.ic_camera),
                     contentDescription = "Cámara",
                     tint = Color(0xFFFFA726),
                     modifier = Modifier
@@ -739,7 +707,7 @@ private fun VideoCameraScreen(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Favorite,
+                    painter = painterResource(R.drawable.ic_video),
                     contentDescription = "Video",
                     tint = Color(0xFFFF5722),
                     modifier = Modifier
@@ -840,7 +808,7 @@ private fun MediaSelectorView(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
+                    painter = painterResource(R.drawable.ic_images),
                     contentDescription = "Galería",
                     tint = Color(0xFF666666),
                     modifier = Modifier
@@ -957,7 +925,7 @@ private fun VideoPreview(video: FotoInsta, context: Context, onPreview: () -> Un
                     .size(24.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    painter = painterResource(R.drawable.ic_trash),
                     contentDescription = "Eliminar",
                     tint = Color.White,
                     modifier = Modifier
@@ -999,14 +967,17 @@ private fun ImagePreview(image: FotoInsta, onPreview: () -> Unit, onRemove: () -
                     .padding(8.dp)
                     .size(24.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Eliminar",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .wrapContentSize(Alignment.Center)
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_trash),
+                        contentDescription = "Eliminar",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }

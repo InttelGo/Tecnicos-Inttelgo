@@ -6,3 +6,9 @@ data class Barrio(
     val prefijo: String = "",
     val red: Int = 0
 )
+
+data class BarriosResponse (
+    val success: Boolean,
+    val barrios: List<Barrio>? = null,
+    val mensaje: String
+)

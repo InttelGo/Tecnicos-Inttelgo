@@ -2,7 +2,12 @@ package com.inttelgo.tecnicos.layout
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +22,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -28,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,18 +45,23 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.CuentaInfoSection
+import com.inttelgo.tecnicos.components.DateChip
+import com.inttelgo.tecnicos.components.EmptyStateCard
 import com.inttelgo.tecnicos.components.LocationSection
 import com.inttelgo.tecnicos.components.ModernDialog
-import com.inttelgo.tecnicos.components.ObservationSection
+import com.inttelgo.tecnicos.components.ObservationBox
 import com.inttelgo.tecnicos.components.PrioritiesCard
 import com.inttelgo.tecnicos.components.PriorityCard
+import com.inttelgo.tecnicos.components.SectionTitle
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.Filter
@@ -61,6 +73,7 @@ import com.inttelgo.tecnicos.viewmodel.TareaViewModel
 import kotlin.collections.component1
 import kotlin.collections.component2
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("DiscouragedApi")
 @Composable
 fun Tareas(
@@ -69,7 +82,7 @@ fun Tareas(
     context: Context
 ){
     val viewModel: TareaViewModel = remember { TareaViewModel() }
-    val filters = remember { mutableStateListOf(Filter("id_tarea", "contains", ""), Filter("id_estado_solicitud", "equals", "1", logic = "AND"), Filter("id_estado_solicitud", "equals", "2", logic = "OR")) }
+    val filters = remember { mutableStateListOf(Filter("id_tarea", "contains", ""), Filter("id_estado_solicitud", "in", listOf("1", "2"), logic = "AND"))}
     val sorting = remember { Sorting("fecha_creacion", true) }
     val prioritySelected = remember { mutableIntStateOf(0) }
     val tareas by viewModel.tareasData.collectAsState()
@@ -78,10 +91,27 @@ fun Tareas(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
     val hasInternetConnection = rememberNetworkConnectivityState(context)
+    val search = remember { mutableStateOf("") }
+
 
     // Content Section
-    if(hasInternetConnection.value){
-        LaunchedEffect(prioritySelected.intValue) {
+    LaunchedEffect(prioritySelected.intValue, search.value) {
+        if(hasInternetConnection.value){
+            Log.d("TAREASVIEW", search.value)
+            val updatedFilters = filters.map { filter ->
+                if (filter.column == "id_tarea") {
+                    filter.copy(
+                        value = search.value,
+                        operator = if (search.value.length > 3) "equals" else "contains"
+                    )
+                } else {
+                    filter
+                }
+            }
+            filters.clear()
+            filters.addAll(updatedFilters)
+            Log.d("TAREASVIEW", filters.toString())
+            viewModel.resetPagination()
             viewModel.consultMoreTareas(filters= filters, sorting= sorting )
         }
     }
@@ -99,8 +129,63 @@ fun Tareas(
                 shadowElevation = 4.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp)
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Campo de búsqueda
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Buscar",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            BasicTextField(
+                                value = search.value,
+                                onValueChange = { search.value = it },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (search.value.isEmpty()) {
+                                        Text(
+                                            text = "Buscar #tarea...",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            // Botón limpiar (solo visible si hay texto)
+                            AnimatedVisibility(visible = search.value.isNotEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Limpiar",
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { search.value = "" },
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                     // Title with connection indicator
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -119,7 +204,7 @@ fun Tareas(
                 // Sin conexión
                 !hasInternetConnection.value -> {
                     EmptyStateCard(
-                        icon = Icons.Default.Search,
+                        icon = R.drawable.ic_octagon_alert,
                         title = "Sin conexión",
                         message = "Por favor verifica tu conexión a internet",
                         modifier = Modifier.fillMaxSize()
@@ -128,13 +213,13 @@ fun Tareas(
 
                 // Carga inicial (primera página y sin datos previos)
                 isLoading && currentPage == 1 && tareas.isNullOrEmpty() -> {
-                    AnimatedIcon(Modifier.fillMaxSize(), "Cargando tareas...")
+                    AnimatedIcon(Modifier.fillMaxSize())
                 }
 
                 // Sin tareas después de cargar
                 !isLoading && tareas.isNullOrEmpty() -> {
                     EmptyStateCard(
-                        icon = Icons.Default.Close,
+                        icon = R.drawable.ic_circle_off,
                         title = "No hay tareas",
                         message = "No se encontraron tareas asignadas",
                         modifier = Modifier.fillMaxSize()
@@ -143,7 +228,7 @@ fun Tareas(
 
                 // Cargando barrios
                 barrios.isNullOrEmpty() -> {
-                    AnimatedIcon(Modifier.fillMaxSize(), "Cargando información...")
+                    AnimatedIcon(Modifier.fillMaxSize())
                 }
 
                 // Mostrar contenido
@@ -166,12 +251,12 @@ fun Tareas(
                                 }
                                 items(
                                     items = tareasPorBarrio,
-                                    key = { it.id_tarea }
+                                    key = { it.id }
                                 ) { tarea ->
-                                    ModernTareaCard(
+                                    TareaCard(
                                         tarea = tarea,
                                         onViewMore = {
-                                            navigateToTarea(tarea.id_tarea.toString())
+                                            navigateToTarea(tarea.id.toString())
                                         }
                                     )
                                 }
@@ -205,58 +290,6 @@ fun Tareas(
 }
 
 @Composable
-private fun EmptyStateCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(32.dp)
-                .widthIn(max = 400.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun BarrioHeader(barrio: String, tareaCount: Int) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -281,8 +314,9 @@ private fun BarrioHeader(barrio: String, tareaCount: Int) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun ModernTareaCard(
+private fun TareaCard(
     tarea: Tarea,
     onViewMore: () -> Unit
 ) {
@@ -297,7 +331,8 @@ private fun ModernTareaCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Ticket Header
             Row(
@@ -310,7 +345,7 @@ private fun ModernTareaCard(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Text(
-                        text = "Tarea #${tarea.id_tarea}",
+                        text = "Tarea #${tarea.id}",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = MaterialTheme.colorScheme.primary,
@@ -322,28 +357,61 @@ private fun ModernTareaCard(
                 tarea.prioridad?.let { PriorityCard(it) }
             }
 
-            Spacer(Modifier.height(20.dp))
 
             // Main Content
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Client Information
+                // Ticket Type Icon
+                //TicketTypeSection(ticket = ticket, context = context)
+
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    tarea.cuenta?.let {
-                        CuentaInfoSection(cuenta = it)
-                        LocationSection(direccion = it.direccion)
+                    // ── Cuenta ───────────────────────────────────────────────────
+                    tarea.cuenta?.let { cuenta ->
+                        CuentaInfoSection(cuenta = cuenta)
+                        LocationSection(direccion = cuenta.direccion)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        Text(
+                            text = buildString {
+                                tarea.cuenta?.plan?.let {append("${it} MB " )}
+                                tarea.cuenta?.tipo_plan?.let{ append(it.descripcion) }
+                                append(" ")
+                                append(tarea.cuenta?.tipo_servicio?.descripcion)
+                            },
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-            ObservationSection(tarea.observacion)
-            Spacer(Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // ── Fechas ───────────────────────────────────────────────────
+            SectionTitle(icon = R.drawable.ic_calendar_days, title = "Fechas")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DateChip(label = "Fecha Habil", date = tarea.fecha_habil, modifier = Modifier.weight(1f))
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            tarea.observacion.let{
+                SectionTitle(icon = R.drawable.ic_info, title = "Observación")
+                ObservationBox(text = it)
+            }
 
             // Action Button
             Button(
@@ -359,24 +427,13 @@ private fun ModernTareaCard(
                     pressedElevation = 2.dp
                 )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Ver detalles",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                Text(
+                    text = "Ver detalles",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                )
             }
         }
     }

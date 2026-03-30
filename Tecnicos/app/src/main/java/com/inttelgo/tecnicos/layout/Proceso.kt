@@ -2,6 +2,7 @@ package com.inttelgo.tecnicos.layout
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,20 +25,26 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -54,19 +61,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
+import com.inttelgo.tecnicos.components.EmptyStateCard
+import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.ModernDialog
+import com.inttelgo.tecnicos.components.ObservationBox
 import com.inttelgo.tecnicos.components.PhoneCard
+import com.inttelgo.tecnicos.components.SectionTitle
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.Proceso
 import com.inttelgo.tecnicos.logic.Model.Sorting
+import com.inttelgo.tecnicos.logic.process.OtherOperarions
 import com.inttelgo.tecnicos.viewmodel.ProcesoViewModel
 
 @Composable
@@ -86,10 +100,6 @@ fun Proceso(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
     val hasInternetConnection = rememberNetworkConnectivityState(context)
-
-    LaunchedEffect(Unit) {
-        viewModel.consultMoreProcess(filters, 10, sorting)
-    }
 
     LaunchedEffect(search.value) {
         if (hasInternetConnection.value) {
@@ -124,55 +134,67 @@ fun Proceso(
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 4.dp
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Campo de búsqueda estilo Facebook
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        if (checkProcessData && procesos != null) {
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer
-                            ) {
-                                Text(
-                                    text = "Nro Instalaciones: ${procesos?.size ?: 0}",
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Buscar",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            BasicTextField(
+                                value = search.value,
+                                onValueChange = { search.value = it },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (search.value.isEmpty()) {
+                                        Text(
+                                            text = "Buscar instalación...",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            // Botón limpiar (solo visible si hay texto)
+                            AnimatedVisibility(visible = search.value.isNotEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Limpiar",
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { search.value = "" },
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    TextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = search.value,
-                        onValueChange = { search.value = it },
-                        label = { Text("Buscar") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Buscar",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        placeholder = { Text("# instalación") },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    )
                 }
             }
 
@@ -186,7 +208,7 @@ fun Proceso(
                     // Sin conexión
                     !hasInternetConnection.value -> {
                         EmptyStateCard(
-                            icon = Icons.Default.Info,
+                            icon = R.drawable.ic_octagon_alert,
                             title = "Sin conexión",
                             message = "Por favor verifica tu conexión a internet",
                             modifier = Modifier.fillMaxSize()
@@ -195,7 +217,7 @@ fun Proceso(
 
                     // Carga inicial
                     !checkProcessData && isLoading && currentPage == 1 -> {
-                        AnimatedIcon(Modifier.fillMaxSize(), "Cargando procesos...")
+                        AnimatedIcon(Modifier.fillMaxSize())
                     }
 
                     // Sin procesos después de cargar
@@ -299,58 +321,6 @@ fun Proceso(
             cancelText = "Cerrar",
             successText = "Reintentar"
         )
-    }
-}
-
-@Composable
-private fun EmptyStateCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(32.dp)
-                .widthIn(max = 400.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
     }
 }
 
@@ -477,27 +447,29 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
         Column(
             modifier = Modifier
                 .padding(24.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header con ID y Estado
+            // ── Header: ID, Identificación y Estado ──────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Text(
-                        text = "ID: ${proceso.id?.toString() ?: "N/A"}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = "ID: ${proceso.id?.toString() ?: "N/A"}",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
+                    }
                 }
 
                 Surface(
@@ -521,9 +493,7 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
-
-            // Nombre del proceso
+            // ── Nombre ───────────────────────────────────────────────────────
             Text(
                 text = proceso.nombre?.takeIf { it.isNotBlank() } ?: "Nombre no disponible",
                 style = MaterialTheme.typography.headlineSmall.copy(
@@ -533,31 +503,34 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-
-            Spacer(Modifier.height(16.dp))
-
-            // Teléfonos (solo mostrar si existen)
-            if (!proceso.telefonos.isNullOrBlank()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            proceso.identificacion?.takeIf { it.isNotBlank() }?.let { id ->
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Teléfonos",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Contactos",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "# identificacion "+id,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
                         )
                     )
                 }
+            }
+            Log.d("ProcesoView", proceso.toString())
+            // ── Fechas ───────────────────────────────────────────────────────
+            proceso.fecha_i?.let {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(title = "Fecha Instalacion")
+                InfoRow(icon= R.drawable.ic_calendar_days, text = it )
+            }
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // ── Teléfonos ────────────────────────────────────────────────────
+            if (!proceso.telefonos.isNullOrBlank()) {
+                SectionTitle(icon = R.drawable.ic_phone,title = "Contactos")
                 val telefonos = try {
                     separarNumerosTelefonicos(proceso.telefonos)
                 } catch (e: Exception) {
@@ -567,14 +540,10 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
                 if (telefonos.isNotEmpty()) {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 16.dp)
                     ) {
-                        items(telefonos) { numero ->
-                            PhoneCard(numero)
-                        }
+                        items(telefonos) { numero -> PhoneCard(numero) }
                     }
                 } else {
-                    // Si falla el procesamiento, mostrar el texto original
                     Text(
                         text = proceso.telefonos,
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -585,100 +554,64 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
                 }
             }
 
-            // Dirección
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Dirección",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .padding(top = 2.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Column {
+            // ── Dirección y Barrio ───────────────────────────────────────────
+            SectionTitle(icon = R.drawable.ic_map_pin, "Ubicacion")
+            Column (verticalArrangement = Arrangement.spacedBy(8.dp) ){
+                proceso.direccion?.let {InfoRow(icon = null, text = "Dirección: ${it}")}
+                proceso.barrio?.descripcion?.let { InfoRow(icon = null, text = "Barrio: $it") }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // ── Plan ─────────────────────────────────────────────────────────
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
                     Text(
-                        text = "Dirección",
+                        text = "Plan",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-                    Spacer(Modifier.height(4.dp))
+                }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
                     Text(
-                        text = proceso.direccion?.takeIf { it.isNotBlank() }
-                            ?: "Dirección no especificada",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            lineHeight = 20.sp
+                        text = buildString {
+                            proceso.plan?.let {append( "${it.id} MB " )}
+                            proceso.tipo_plan?.let { append(it.descripcion) }
+                            append(" ")
+                            append(proceso.tipo_servicio?.descripcion)
+                        },
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
 
-            // Observación (solo mostrar si existe)
-            proceso.observacion?.let { observacion ->
-                observacion.descripcion?.takeIf { it.isNotBlank() }?.let { descripcion ->
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Observación",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "Observación",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                        }
 
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(120.dp)
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = descripcion,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        lineHeight = 18.sp
-                                    ),
-                                    modifier = Modifier.verticalScroll(rememberScrollState())
-                                )
-                            }
-                        }
-                    }
-                }
+
+            // ── Observación ──────────────────────────────────────────────────
+            proceso.observacion?.let { it -> ObservationBox(it.descripcion) }
+
+            // ── Usuarios ─────────────────────────────────────────────────────
+            proceso.usuario_creacion?.let{
+                InfoRow(icon = R.drawable.ic_circle_user_round, text = "Creado por: ${it.nombre_1} ${it.apellido_1}")
             }
 
-            Spacer(Modifier.height(24.dp))
-
-            // Botón de acción
+            // ── Botón de acción ──────────────────────────────────────────────
             val textButton = if (proceso.estado?.id == 7) "Iniciar Proceso" else "Continuar Proceso"
 
             Button(
                 onClick = { onInitProcess(proceso) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = true,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -686,10 +619,7 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
-                    imageVector = if (proceso.estado?.id == 7)
-                        Icons.Default.PlayArrow
-                    else
-                        Icons.Default.Refresh,
+                    painter = painterResource( if (proceso.estado?.id == 7) R.drawable.ic_plus else R.drawable.ic_step_forward),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )

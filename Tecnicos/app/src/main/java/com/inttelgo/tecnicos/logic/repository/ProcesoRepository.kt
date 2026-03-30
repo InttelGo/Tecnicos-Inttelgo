@@ -4,10 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import com.inttelgo.tecnicos.logic.Model.CreateEvidenciaInstalationResponse
+import com.inttelgo.tecnicos.logic.Model.FinishInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.Request.AddInventaryInstalacionRequest
 import com.inttelgo.tecnicos.logic.Model.Request.ChangeStatusProcesosRequest
-import com.inttelgo.tecnicos.logic.Model.Response.CreateEvidenciaInstalationResponse
-import com.inttelgo.tecnicos.logic.Model.Response.FinishInstalationResponse
 import com.inttelgo.tecnicos.logic.process.ImageOperations
 import com.inttelgo.tecnicos.network.RetrofitClient
 import okhttp3.MediaType.Companion.toMediaTypeOrNull

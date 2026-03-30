@@ -10,29 +10,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,22 +44,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
-import com.inttelgo.tecnicos.components.ClientInfoSection
 import com.inttelgo.tecnicos.components.CuentaInfoSection
+import com.inttelgo.tecnicos.components.DateChip
+import com.inttelgo.tecnicos.components.EmptyHistoryCard
+import com.inttelgo.tecnicos.components.EmptyStateCard
 import com.inttelgo.tecnicos.components.HistoryToggle
+import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.LocationSection
 import com.inttelgo.tecnicos.components.MediaPreview
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.ModernTopAppBar
-import com.inttelgo.tecnicos.components.ObservationSection
+import com.inttelgo.tecnicos.components.PhoneCard
+import com.inttelgo.tecnicos.components.SectionTitle
+import com.inttelgo.tecnicos.components.TypeSection
 import com.inttelgo.tecnicos.components.formatDate
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
@@ -139,7 +140,7 @@ fun TareaScreen(idTarea: String, context: Context, navigateToUploadImage: (id: S
                     // Sin conexión
                     !hasInternetConnection.value -> {
                         EmptyStateCard(
-                            icon = Icons.Default.Close,
+                            icon = R.drawable.ic_octagon_alert,
                             title = "Sin conexión",
                             message = "Por favor verifica tu conexión a internet",
                             modifier = Modifier.fillMaxSize()
@@ -148,13 +149,13 @@ fun TareaScreen(idTarea: String, context: Context, navigateToUploadImage: (id: S
 
                     // Cargando tarea inicial
                     !consultCheck && isLoading -> {
-                        AnimatedIcon(Modifier.fillMaxSize(), "Cargando tarea...")
+                        AnimatedIcon(Modifier.fillMaxSize())
                     }
 
                     // Error al cargar
                     !consultCheck && !isLoading -> {
                         EmptyStateCard(
-                            icon = Icons.Default.Close,
+                            icon = R.drawable.ic_circle_off,
                             title = "No se pudo cargar",
                             message = "No se encontró la información de la tarea",
                             modifier = Modifier.fillMaxSize()
@@ -171,7 +172,6 @@ fun TareaScreen(idTarea: String, context: Context, navigateToUploadImage: (id: S
                             item {
                                 TareaInfoCard(tarea)
                             }
-
                             item {
                                 HistoryToggle(showHistory)
                             }
@@ -197,7 +197,7 @@ fun TareaScreen(idTarea: String, context: Context, navigateToUploadImage: (id: S
                                         histories?.let { historyList ->
                                             items(historyList) { history ->
                                                 HistorySection(history, isLoadingEvidencias) {
-                                                    viewModel.consultEvidencias(history.id_obs_tarea)
+                                                    viewModel.consultEvidencias(history.id)
                                                 }
                                             }
 
@@ -283,59 +283,6 @@ fun TareaScreen(idTarea: String, context: Context, navigateToUploadImage: (id: S
         }
     }
 }
-
-@Composable
-private fun EmptyStateCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(32.dp)
-                .widthIn(max = 400.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun LoadingHistoryCard() {
     Card(
@@ -369,50 +316,6 @@ private fun LoadingHistoryCard() {
         }
     }
 }
-
-@Composable
-private fun EmptyHistoryCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = "Sin historial",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "No hay observaciones registradas",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun HistoryLoadMoreTrigger(
     viewModel: TareaViewModel,
@@ -480,7 +383,7 @@ private fun HistoryLoadMoreTrigger(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        ){
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
@@ -520,47 +423,35 @@ private fun FloatingButtons(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.End
     ) {
-        ExtendedFloatingActionButton(
+        FloatingActionButton(
             onClick = { navigateToUploadImage(idTarea, "tarea") },
             containerColor = if (enabled) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary
             else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(48.dp)
+            shape = CircleShape,
+            modifier = Modifier.size(50.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Add,
+                painter = painterResource(R.drawable.ic_plus),
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Observación",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold
-                )
+                modifier = Modifier.size(24.dp)
             )
         }
 
-        ExtendedFloatingActionButton(
+        FloatingActionButton(
             onClick = { navigateToUploadImage(idTarea, "finalizar tarea") },
             containerColor = if (enabled) MaterialTheme.colorScheme.secondary
             else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (enabled) MaterialTheme.colorScheme.onSecondary
             else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(48.dp)
+            shape = CircleShape,
+            modifier = Modifier.size(50.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.CheckCircle,
+                painter = painterResource(R.drawable.ic_upload),
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Finalizar Tarea",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold
-                )
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -577,8 +468,11 @@ private fun TareaInfoCard(tarea: Tarea?) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // ── Header: ID, Prioridad y Estado ───────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -588,44 +482,120 @@ private fun TareaInfoCard(tarea: Tarea?) {
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    tarea?.let {
-                        Text(
-                            text = "Tarea #${it.id_tarea}",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
+                    Text(
+                        text = "Ticket #${tarea?.id }",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
                         )
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    tarea?.estado?.let {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                text = it.descripcion,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            tarea?.cliente?.let {
-                ClientInfoSection(it)
+            // ── Cliente ──────────────────────────────────────────────────
+            tarea?.cliente?.let { c ->
+                SectionTitle(icon = R.drawable.ic_circle_user_round, title = "Cliente")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Avatar iniciales
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text(
+                                text = "${c.nombre1.firstOrNull() ?: ""}${c.apellido1.firstOrNull() ?: ""}",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = listOfNotNull(c.nombre1, c.nombre2, c.apellido1, c.apellido2)
+                                .filter { it.isNotBlank() }.joinToString(" "),
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        InfoRow(icon = R.drawable.ic_circle_user_round, text = c.identificacion)
+                        InfoRow(icon = R.drawable.ic_mail, text = c.correo)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PhoneCard(c.telefono1)
+                            c.telefono2?.let { PhoneCard(it) }
+                        }
+                    }
+                }
             }
-            Spacer(Modifier.height(20.dp))
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // ── Tipo ─────────────────────────────────────────────────────
+
+            SectionTitle(icon = R.drawable.ic_ethernet_port, title = "Tipo ticket")
+            tarea?.tipo?.descripcion?.let { TypeSection(descripcion = it) }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // ── Cuenta ───────────────────────────────────────────────────
+            tarea?.cuenta?.let { cuenta ->
+                CuentaInfoSection(cuenta = cuenta)
+                LocationSection(direccion = cuenta.direccion)
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // ── Fechas ───────────────────────────────────────────────────
+            SectionTitle(icon = R.drawable.ic_calendar_days, title = "Fechas")
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    tarea?.cuenta?.let {
-                        CuentaInfoSection(cuenta = it)
-                    }
+                tarea?.fecha_habil?.let{
+                    DateChip(
+                        label = "Fecha Realizacion",
+                        date = it,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
-            }
-
-            tarea?.let {
-                it.cuenta?.let { it1 -> LocationSection(direccion = it1.direccion) }
-                Spacer(Modifier.height(20.dp))
-                ObservationSection(it.observacion)
             }
         }
     }
@@ -666,7 +636,7 @@ private fun HistorySection(
                         enabled = !isLoadingEvidencias
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.visibility_icon),
+                            painter = painterResource(R.drawable.ic_eye),
                             contentDescription = "Ver evidencia",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(28.dp)

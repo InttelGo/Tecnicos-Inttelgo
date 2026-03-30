@@ -17,6 +17,11 @@ android {
         versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags += ""
+            }
+        }
     }
 
     buildTypes {
@@ -38,6 +43,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 }
 
@@ -79,13 +90,13 @@ dependencies {
     //Reproductor
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
-    implementation ("androidx.media3:media3-common:1.2.1")
+    implementation (libs.androidx.media3.common)
     
     //Transcoder
-    implementation("com.otaliastudios:transcoder:0.10.5")
+    implementation(libs.transcoder)
 
     //Signature
-    implementation("com.github.gcacace:signature-pad:1.3.1")
+    implementation(libs.signature.pad)
 
     //Animations
     implementation (libs.lottie.compose)

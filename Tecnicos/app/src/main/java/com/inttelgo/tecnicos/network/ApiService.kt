@@ -1,30 +1,30 @@
 package com.inttelgo.tecnicos.network
 import com.inttelgo.tecnicos.logic.Model.Articulo
+import com.inttelgo.tecnicos.logic.Model.ArticuloInstResponse
+import com.inttelgo.tecnicos.logic.Model.BarriosResponse
+import com.inttelgo.tecnicos.logic.Model.CreateEvidenciaInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.DeleteImageResponse
+import com.inttelgo.tecnicos.logic.Model.EvidenciasInstalationResponse
+import com.inttelgo.tecnicos.logic.Model.FinishInstalationResponse
+import com.inttelgo.tecnicos.logic.Model.LoginRequest
+import com.inttelgo.tecnicos.logic.Model.LoginResponse
+import com.inttelgo.tecnicos.logic.Model.ObsTareaEvidenciaResponse
+import com.inttelgo.tecnicos.logic.Model.ObsTareaResponse
+import com.inttelgo.tecnicos.logic.Model.ObsTicketEvidenciaResponse
+import com.inttelgo.tecnicos.logic.Model.ObsTicketResponse
+import com.inttelgo.tecnicos.logic.Model.ProcessWithFiltersResponse
 import com.inttelgo.tecnicos.logic.Model.Request.AddInventaryInstalacionRequest
 import com.inttelgo.tecnicos.logic.Model.Request.ChangeStatusProcesosRequest
-import com.inttelgo.tecnicos.logic.Model.Request.LoginRequest
 import com.inttelgo.tecnicos.logic.Model.Request.UbicationRequest
 import com.inttelgo.tecnicos.logic.Model.Response.AddInventaryInstalacionResponse
-import com.inttelgo.tecnicos.logic.Model.Response.ArticuloInstResponse
-import com.inttelgo.tecnicos.logic.Model.Response.BarriosResponse
-import com.inttelgo.tecnicos.logic.Model.Response.CreateEvidenciaInstalationResponse
-import com.inttelgo.tecnicos.logic.Model.Response.EvidenciasInstalationResponse
-import com.inttelgo.tecnicos.logic.Model.Response.FinishInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.Response.FinishObservacionResponse
-import com.inttelgo.tecnicos.logic.Model.Response.LoginResponse
 import com.inttelgo.tecnicos.logic.Model.Response.MessageResponse
-import com.inttelgo.tecnicos.logic.Model.Response.ObsTareaEvidenciaResponse
-import com.inttelgo.tecnicos.logic.Model.Response.ObsTareaResponse
-import com.inttelgo.tecnicos.logic.Model.Response.ObsTicketEvidenciaResponse
-import com.inttelgo.tecnicos.logic.Model.Response.ObsTicketResponse
 import com.inttelgo.tecnicos.logic.Model.Response.ObservacionResponse
-import com.inttelgo.tecnicos.logic.Model.Response.ProcessWithFiltersResponse
-import com.inttelgo.tecnicos.logic.Model.Response.SoporteWithFiltersResponse
-import com.inttelgo.tecnicos.logic.Model.Response.TareaResponse
-import com.inttelgo.tecnicos.logic.Model.Response.TareaWithFiltersResponse
-import com.inttelgo.tecnicos.logic.Model.Response.TicketResponse
 import com.inttelgo.tecnicos.logic.Model.Response.UbicationResponse
+import com.inttelgo.tecnicos.logic.Model.SoporteWithFiltersResponse
+import com.inttelgo.tecnicos.logic.Model.TareaResponse
+import com.inttelgo.tecnicos.logic.Model.TareaWithFiltersResponse
+import com.inttelgo.tecnicos.logic.Model.TicketResponse
 import com.inttelgo.tecnicos.logic.Model.UpdateProfileRequest
 import com.inttelgo.tecnicos.logic.Model.UserProfileResponse
 import okhttp3.MultipartBody
@@ -162,11 +162,12 @@ interface ApiService {
         @Part("articulos") articulos: String? = null
     ): Response<FinishInstalationResponse>
 
-    @GET("usuario/verifyAuth")
-    suspend fun getUserProfile(): Response<UserProfileResponse>
+    @GET("usuario/{id}")
+    suspend fun getUserProfile(@Path("id") id: String): Response<UserProfileResponse>
 
-    @PUT("user/profile")
+    @PUT("usuario/{id}")
     suspend fun updateUserProfile(
+        @Path("id") id: String,
         @Body request: UpdateProfileRequest
     ): Response<UserProfileResponse>
 }

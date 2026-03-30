@@ -188,7 +188,7 @@ fun TextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    leadingIcon: ImageVector?,
+    leadingIcon: Int?,
     placeholder: String,
     required: Boolean = false
 ) {
@@ -215,9 +215,9 @@ fun TextField(
             )
         },
         leadingIcon = {
-            if (leadingIcon != null) {
+            leadingIcon?.let {
                 Icon(
-                    imageVector = leadingIcon,
+                    painter = painterResource(it),
                     contentDescription = null,
                     tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
@@ -286,15 +286,15 @@ fun PasswordField(
             },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Lock,
+                    painter = painterResource(R.drawable.ic_key_round),
                     contentDescription = null,
                     tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
             },
             trailingIcon = {
                 val image = if (passwordVisible.value)
-                    R.drawable.visibility_off_icon
-                else R.drawable.visibility_icon
+                    R.drawable.ic_eye_closed
+                else R.drawable.ic_eye
 
                 IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
                     Icon(
@@ -436,35 +436,32 @@ fun TextArea(
 fun PhoneCard(number: String) {
     val context = LocalContext.current
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(50),
         onClick = {
             copyToClipboard(context, number)
             // llamada e instancia a fotos con el numero
             val intent = Intent(Intent.ACTION_DIAL, "tel:${number}".toUri())
             context.startActivity(intent)
         },
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-        modifier = Modifier.padding(end = 8.dp)
+        color = MaterialTheme.colorScheme.secondaryContainer
     ) {
         Row(
-            modifier = Modifier.padding(5.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                number,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 15.sp,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Spacer(modifier = Modifier.width(8.dp)) // Add some spacing between text and icon
             Icon(
-                painter = painterResource(R.drawable.content_copy_icon),
+                painter = painterResource(R.drawable.ic_phone),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(11.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Text(
+                text = number,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Medium
+                )
             )
         }
     }

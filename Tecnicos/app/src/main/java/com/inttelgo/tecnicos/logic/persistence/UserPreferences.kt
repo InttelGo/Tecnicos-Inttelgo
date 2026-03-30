@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.inttelgo.tecnicos.logic.Model.Usuario
 import androidx.core.content.edit
+import com.inttelgo.tecnicos.logic.Model.UsuarioAuth
 
 class UserPreferences (context: Context){
     private val sharedPreferences: SharedPreferences =
@@ -21,14 +22,14 @@ class UserPreferences (context: Context){
         const val KEY_PASSWORD = "saved_password"
     }
 
-    fun saveUser(usuario: Usuario) {
+    fun saveUser(usuario: UsuarioAuth) {
         val json = gson.toJson(usuario)
         sharedPreferences.edit { putString(KEY_USER_JSON, json) }
     }
 
-    fun getUser(): Usuario? {
+    fun getUser(): UsuarioAuth? {
         val json = sharedPreferences.getString(KEY_USER_JSON, null)
-        return json?.let {gson.fromJson(it, Usuario::class.java)}
+        return json?.let {gson.fromJson(it, UsuarioAuth::class.java)}
     }
 
     fun getName(): String? = sharedPreferences.getString(KEY_NAME, null)

@@ -1,7 +1,7 @@
 package com.inttelgo.tecnicos.logic.Model
 
 data class FotoInsta(
-    val idFotoInsta: String = "",
+    val id: String = "",
     val link: String = "",
     val fecha: String = "",
     val ubicacion: String = ""

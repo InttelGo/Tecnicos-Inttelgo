@@ -2,8 +2,13 @@ package com.inttelgo.tecnicos.layout
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +20,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -29,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,22 +55,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.CuentaInfoSection
+import com.inttelgo.tecnicos.components.DateChip
+import com.inttelgo.tecnicos.components.EmptyStateCard
 import com.inttelgo.tecnicos.components.LocationSection
 import com.inttelgo.tecnicos.components.ModernDialog
-import com.inttelgo.tecnicos.components.ObservationSection
+import com.inttelgo.tecnicos.components.ObservationBox
 import com.inttelgo.tecnicos.components.PrioritiesCard
 import com.inttelgo.tecnicos.components.PriorityCard
+import com.inttelgo.tecnicos.components.SectionTitle
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.Sorting
 import com.inttelgo.tecnicos.logic.Model.Ticket
+import com.inttelgo.tecnicos.logic.process.OtherOperarions
 import com.inttelgo.tecnicos.logic.process.homeProcess
 import com.inttelgo.tecnicos.viewmodel.HomeViewModel
 import com.inttelgo.tecnicos.viewmodel.SoporteViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("DiscouragedApi")
 @Composable
 fun Soporte(
@@ -81,10 +94,25 @@ fun Soporte(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
     val hasInternetConnection = rememberNetworkConnectivityState(context)
+    val search = remember { mutableStateOf("") }
 
     // Content Section
-    if(hasInternetConnection.value){
-        LaunchedEffect(prioritySelected.intValue) {
+    LaunchedEffect(prioritySelected.intValue, search.value) {
+        if(hasInternetConnection.value){
+            val updatedFilters = filters.map { filter ->
+                if (filter.column == "id_ticket") {
+                    filter.copy(
+                        value = search.value,
+                        operator = if (search.value.length > 3) "equals" else "contains"
+                    )
+                } else {
+                    filter
+                }
+            }
+            filters.clear()
+            filters.addAll(updatedFilters)
+
+            viewModel.resetPagination()
             viewModel.consultMoreTickets(filters= filters, sorting= sorting )
         }
     }
@@ -102,11 +130,65 @@ fun Soporte(
                 shadowElevation = 4.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp)
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Campo de búsqueda
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Buscar",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            BasicTextField(
+                                value = search.value,
+                                onValueChange = { search.value = it },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (search.value.isEmpty()) {
+                                        Text(
+                                            text = "Buscar #ticket...",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            // Botón limpiar (solo visible si hay texto)
+                            AnimatedVisibility(visible = search.value.isNotEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Limpiar",
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { search.value = "" },
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PrioritiesCard(prioritySelected)
@@ -114,14 +196,13 @@ fun Soporte(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
 
             // Estados de carga mejorados
             when {
                 // Sin conexión
                 !hasInternetConnection.value -> {
                     EmptyStateCard(
-                        icon = Icons.Default.Search,
+                        icon = R.drawable.ic_octagon_alert,
                         title = "Sin conexión",
                         message = "Por favor verifica tu conexión a internet",
                         modifier = Modifier.fillMaxSize()
@@ -130,13 +211,13 @@ fun Soporte(
 
                 // Carga inicial (primera página y sin datos previos)
                 isLoading && currentPage == 1 && tickets.isNullOrEmpty() -> {
-                    AnimatedIcon(Modifier.fillMaxSize(), "Cargando tickets...")
+                    AnimatedIcon(Modifier.fillMaxSize())
                 }
 
                 // Sin tickets después de cargar
                 !isLoading && tickets.isNullOrEmpty() -> {
                     EmptyStateCard(
-                        icon = Icons.Default.Close,
+                        icon = R.drawable.ic_circle_off,
                         title = "No hay tickets",
                         message = "No se encontraron tickets asignados",
                         modifier = Modifier.fillMaxSize()
@@ -145,7 +226,7 @@ fun Soporte(
 
                 // Cargando barrios
                 barrios.isNullOrEmpty() -> {
-                    AnimatedIcon(Modifier.fillMaxSize(), "Cargando información...")
+                    AnimatedIcon(Modifier.fillMaxSize())
                 }
 
                 // Mostrar contenido
@@ -168,12 +249,12 @@ fun Soporte(
                                 }
                                 items(
                                     items = ticketsConBarrio,
-                                    key = { it.id_ticket }
+                                    key = { it.id }
                                 ) { ticket ->
                                     TicketCard(
                                         ticket = ticket,
                                         context = context,
-                                        onViewMore = { navigateToSupport(ticket.id_ticket) }
+                                        onViewMore = { navigateToSupport(ticket.id) }
                                     )
                                 }
                                 item {
@@ -204,59 +285,6 @@ fun Soporte(
         }
     }
 }
-
-@Composable
-private fun EmptyStateCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(32.dp)
-                .widthIn(max = 400.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun BarrioHeader(barrio: String, ticketCount: Int) {
     Row(
@@ -282,6 +310,7 @@ private fun BarrioHeader(barrio: String, ticketCount: Int) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun TicketCard(
     ticket: Ticket,
@@ -299,7 +328,8 @@ private fun TicketCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(20.dp) ,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Ticket Header
             Row(
@@ -312,7 +342,7 @@ private fun TicketCard(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Text(
-                        text = "Ticket #${ticket.id_ticket}",
+                        text = "Ticket #${ticket.id}",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = MaterialTheme.colorScheme.primary,
@@ -324,8 +354,6 @@ private fun TicketCard(
                 ticket.prioridad?.let { PriorityCard(it) }
             }
 
-            Spacer(Modifier.height(20.dp))
-
             // Main Content
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -334,21 +362,54 @@ private fun TicketCard(
                 // Ticket Type Icon
                 TicketTypeSection(ticket = ticket, context = context)
 
-                // Client Information
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    ticket.cuenta?.let {
-                        CuentaInfoSection(cuenta = it)
-                        LocationSection(direccion = it.direccion)
+                    // ── Cuenta ───────────────────────────────────────────────────
+                    ticket.cuenta?.let { cuenta ->
+                        CuentaInfoSection(cuenta = cuenta)
+                        LocationSection(direccion = cuenta.direccion)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        Text(
+                            text = buildString {
+                                ticket.cuenta?.plan?.let {append("${it} MB " )}
+                                ticket.cuenta?.tipo_plan?.let{ append(it.descripcion) }
+                                append(" ")
+                                append(ticket.cuenta?.tipo_servicio?.descripcion)
+                            },
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
                     }
                 }
             }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // ── Fechas ───────────────────────────────────────────────────
+            SectionTitle(icon = R.drawable.ic_calendar_days, title = "Fechas")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ticket.fecha_hora?.let {
+                    DateChip(label = "Creación", date = OtherOperarions().formatFechaBaseDatos(it), modifier = Modifier.weight(1f))
+                }
+            }
 
-            Spacer(Modifier.height(10.dp))
-            ObservationSection(ticket.observacion_ticket)
-            Spacer(Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // ── Observaciones ────────────────────────────────────────────
+            if (ticket.observacion_ticket.isNotBlank()) {
+                SectionTitle(icon = R.drawable.ic_info, title = "Observación")
+                ObservationBox(text = ticket.observacion_ticket)
+            }
 
             // Action Button
             Button(
@@ -364,24 +425,13 @@ private fun TicketCard(
                     pressedElevation = 2.dp
                 )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Ver detalles",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                Text(
+                    text = "Ver detalles",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                )
             }
         }
     }

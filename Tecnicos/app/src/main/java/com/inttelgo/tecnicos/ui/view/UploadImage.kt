@@ -94,7 +94,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                         context = context,
                         navigateToHome = navigateToHome,
                         navigateToUp = navigateToUp,
-                        modifier = Modifier.padding(innerPadding).padding(20.dp).fillMaxSize(),
+                        modifier = Modifier.padding(innerPadding).padding( horizontal = 20.dp).fillMaxSize(),
                         selectedPreviewUri,
                         isCompressing
                     )
@@ -106,7 +106,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                         context = context,
                         navigateToHome = navigateToHome,
                         navigateToUp = navigateToUp,
-                        modifier = Modifier.padding(innerPadding).padding(20.dp).fillMaxSize(),
+                        modifier = Modifier.padding(innerPadding).padding( horizontal = 20.dp).fillMaxSize(),
                         selectedPreviewUri,
                         isCompressing
                     )
@@ -117,7 +117,7 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
                         context = context,
                         navigateToHome = navigateToHome,
                         navigateToUp = navigateToUp,
-                        modifier = Modifier.padding(innerPadding).padding(20.dp).fillMaxSize(),
+                        modifier = Modifier.padding(innerPadding).padding( horizontal = 20.dp).fillMaxSize(),
                         selectedPreviewFotoInsta,
                         isCompressing
                     )

@@ -5,7 +5,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inttelgo.tecnicos.logic.Model.UpdateProfileRequest
-import com.inttelgo.tecnicos.logic.Model.UserProfile
+import com.inttelgo.tecnicos.logic.Model.UsuarioAuth
+import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.repository.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +19,8 @@ class ProfileViewModel(
 
     private val tag = "ProfileViewModel"
 
-    private val _userProfile = MutableStateFlow<UserProfile?>(null)
-    val userProfile: StateFlow<UserProfile?> = _userProfile
+    private val _userProfile = MutableStateFlow<UsuarioAuth?>(null)
+    val userProfile: StateFlow<UsuarioAuth?> = _userProfile
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -30,16 +31,17 @@ class ProfileViewModel(
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage
 
-    fun loadUserProfile() {
+    fun loadUserProfile(context: Context) {
         _isLoading.value = true
+        val user = UserPreferences(context).getUser()
         viewModelScope.launch {
             try {
-                val result = repository.getUserProfile()
+                val result = repository.getUserProfile(user?.id.toString())
                 if (result.isSuccessful) {
                     result.body()?.let { response ->
                         Log.d(tag, response.toString())
                         if (response.success) {
-                            _userProfile.value = response.user
+                            _userProfile.value = response.usuario
                         } else {
                             _errorMessage.value = response.message
                         }
@@ -56,22 +58,23 @@ class ProfileViewModel(
         }
     }
 
-    fun updateProfile(name: String, email: String, phone: String) {
+    fun updateProfile(name: String, email: String, phone: String, context: Context) {
+        val user = UserPreferences(context).getUser()
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val result = repository.updateUserProfile(
+                val result = repository.updateUserProfile(user?.id.toString(),
                     UpdateProfileRequest(
-                        name = name,
-                        email = email,
-                        phone = phone
+                        nombre_1 = name,
+                        correo_personal = email,
+                        telefono_1 = phone
                     )
                 )
                 if (result.isSuccessful) {
                     result.body()?.let { response ->
                         Log.d(tag, response.toString())
                         if (response.success) {
-                            _userProfile.value = response.user
+                            _userProfile.value = response.usuario
                             _successMessage.value = response.message
                         } else {
                             _errorMessage.value = response.message

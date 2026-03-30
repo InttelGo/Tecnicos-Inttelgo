@@ -78,7 +78,7 @@ fun ObsTarea(
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(vertical = 16.dp),
             userScrollEnabled = !isUploadingFile
         ) {
             item {

@@ -307,6 +307,11 @@ class TareaViewModel(private val repository: TareaRepository = TareaRepository()
         _evidencias.value = emptyList()
     }
 
+    fun resetPagination() {
+        _currentPage.value = 1
+        _tareasData.value = emptyList()
+    }
+
     fun clearHistories(){
         _histories.value = emptyList()
         _currentPage.value = 1

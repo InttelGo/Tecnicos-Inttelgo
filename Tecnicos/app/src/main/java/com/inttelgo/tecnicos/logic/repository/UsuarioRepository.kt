@@ -1,6 +1,6 @@
 package com.inttelgo.tecnicos.logic.repository
 
-import com.inttelgo.tecnicos.logic.Model.Request.LoginRequest
+import com.inttelgo.tecnicos.logic.Model.LoginRequest
 import com.inttelgo.tecnicos.logic.Model.Request.UbicationRequest
 import com.inttelgo.tecnicos.network.RetrofitClient
 

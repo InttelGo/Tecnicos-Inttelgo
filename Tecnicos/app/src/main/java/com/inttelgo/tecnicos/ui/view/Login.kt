@@ -214,7 +214,7 @@ private fun LoginFormFields(
             value = userName.value,
             onValueChange = { userName.value = it },
             label = "Nombre de Usuario",
-            leadingIcon = Icons.Default.Person,
+            leadingIcon = R.drawable.ic_circle_user_round,
             placeholder = "Ingresa tu usuario",
             true
         )

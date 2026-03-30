@@ -1,23 +1,34 @@
 package com.inttelgo.tecnicos.logic.Model
 
 data class Tarea(
-    val id_tarea: Int = 0,
-    val id_cuenta: Int = 0,
-    val num_cuenta: String ="",
-    val barrio: Barrio? = null,
     val prioridad: Prioridad? = null,
+    val barrio: Barrio? = null,
+    val id: Int = 0,
     val observacion: String = "",
     val observacion_tecnico: String = "",
     val fecha_creacion: String ="",
     val fecha_edicion: String = "",
     val fecha_habil: String ="",
     val fecha_finalizacion: String = "",
+    val cuenta: Cuenta? = null,
     val tipo: TipoTarea? = null,
     val tipo_area: String? = null,
     val estado: EstadoTarea? = null,
+    val usuarioCreacion: Usuario? = null,
+    val usuarioEdicion: Usuario? = null,
     val tecnico: Usuario? = null,
-    val usuario: Usuario? = null,
-    val uusuarioEdicion: Usuario? = null,
-    val cuenta: Cuenta? = null,
     val cliente: Cliente? = null
+)
+
+data class TareaWithFiltersResponse (
+    val success: Boolean,
+    val tareas: List<Tarea>,
+    val totalPages: Int,
+    val mensaje: String
+)
+
+data class TareaResponse(
+    val success: Boolean = false,
+    val mensaje: String = "",
+    val tarea: Tarea? = null,
 )

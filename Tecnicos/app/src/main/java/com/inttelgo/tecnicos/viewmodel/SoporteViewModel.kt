@@ -82,7 +82,7 @@ class SoporteViewModel (private val repository: SoporteRepository = SoporteRepos
                             }else{
                                 _ticketsData.value = (_ticketsData.value ?: emptyList()) + it.tickets
                             }
-                            _totalPages.value = it.total
+                            _totalPages.value = it.totalPages
                             _currentPage.value++
                         }else{
                             _errorMessage.value = it.mensaje
@@ -261,6 +261,11 @@ class SoporteViewModel (private val repository: SoporteRepository = SoporteRepos
 
     fun clearEvidencias(){
         _evidencias.value = emptyList()
+    }
+
+    fun resetPagination() {
+        _currentPage.value = 1
+        _ticketsData.value = emptyList()
     }
 
     fun clearHistories(){

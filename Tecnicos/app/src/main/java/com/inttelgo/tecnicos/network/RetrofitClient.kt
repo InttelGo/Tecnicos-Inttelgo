@@ -3,7 +3,7 @@ package com.inttelgo.tecnicos.network
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import com.inttelgo.tecnicos.logic.Model.Request.LoginRequest
+import com.inttelgo.tecnicos.logic.Model.LoginRequest
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -20,7 +20,7 @@ import java.security.cert.X509Certificate
 
 @SuppressLint("StaticFieldLeak")
 object RetrofitClient {
-    private const val BASE_URL = "https://internetdedicado.com.co/api/"
+    private const val BASE_URL = "https://internetdedicado.com.co/api/" //"http://192.168.1.64:3000/api/"
     private const val TAG = "RetrofitClient"
 
     private val logging = HttpLoggingInterceptor().apply {
@@ -122,7 +122,7 @@ object RetrofitClient {
                                 val loginResponse = api.login(loginRequest)
 
                                 if (loginResponse.isSuccessful && loginResponse.body()?.success == true) {
-                                    val newToken = loginResponse.body()!!.token
+                                    val newToken = loginResponse.body()!!.data!!.token
                                     updateAuthToken(newToken, context!!)
                                     userPreferences.saveToken(newToken)
                                     true

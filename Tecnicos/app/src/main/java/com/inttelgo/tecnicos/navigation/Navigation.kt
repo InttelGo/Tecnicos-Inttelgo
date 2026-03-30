@@ -47,6 +47,7 @@ fun AppNavigation (context: Context){
             // Auto-login si hay credenciales guardadas
             LaunchedEffect(Unit) {
                 if (userPreferences.hasSavedCredentials() && userPreferences.getUser() != null) {
+
                     loginViewModel.autoLogin(
                         context,
                         navigateToHome = {

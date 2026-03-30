@@ -33,6 +33,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,22 +50,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
-import com.inttelgo.tecnicos.components.ClientInfoSection
 import com.inttelgo.tecnicos.components.CuentaInfoSection
+import com.inttelgo.tecnicos.components.DateChip
+import com.inttelgo.tecnicos.components.EmptyHistoryCard
+import com.inttelgo.tecnicos.components.EmptyStateCard
 import com.inttelgo.tecnicos.components.HistoryToggle
+import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.LocationSection
 import com.inttelgo.tecnicos.components.MediaPreview
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.ModernTopAppBar
-import com.inttelgo.tecnicos.components.ObservationSection
+import com.inttelgo.tecnicos.components.ObservationBox
+import com.inttelgo.tecnicos.components.PhoneCard
+import com.inttelgo.tecnicos.components.SectionTitle
+import com.inttelgo.tecnicos.components.TypeSection
 import com.inttelgo.tecnicos.components.formatDate
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
@@ -140,7 +148,7 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
                     // Sin conexión
                     !hasInternetConnection.value -> {
                         EmptyStateCard(
-                            icon = Icons.Default.Close,
+                            icon = R.drawable.ic_octagon_alert,
                             title = "Sin conexión",
                             message = "Por favor verifica tu conexión a internet",
                             modifier = Modifier.fillMaxSize()
@@ -149,13 +157,13 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
 
                     // Cargando ticket inicial
                     !consultCheck && isLoading -> {
-                        AnimatedIcon(Modifier.fillMaxSize(), "Cargando ticket...")
+                        AnimatedIcon(Modifier.fillMaxSize())
                     }
 
                     // Error al cargar
                     !consultCheck && !isLoading -> {
                         EmptyStateCard(
-                            icon = Icons.Default.Close,
+                            icon = R.drawable.ic_octagon_alert,
                             title = "No se pudo cargar",
                             message = "No se encontró la información del ticket",
                             modifier = Modifier.fillMaxSize()
@@ -199,7 +207,7 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
                                             items(historyList) { history ->
                                                 HistorySection(history, isLoadingEvidencias.value) {
                                                     isLoadingEvidencias.value = true
-                                                    viewModel.consultEvidencias(history.id_obs_ticket)
+                                                    viewModel.consultEvidencias(history.id)
                                                 }
                                             }
 
@@ -289,58 +297,6 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
 }
 
 @Composable
-private fun EmptyStateCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(32.dp)
-                .widthIn(max = 400.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun LoadingHistoryCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -367,49 +323,6 @@ private fun LoadingHistoryCard() {
                 Text(
                     text = "Cargando historial...",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyHistoryCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = "Sin historial",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "No hay observaciones registradas",
-                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -524,52 +437,41 @@ private fun FloatingButtons(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.End
     ) {
-        ExtendedFloatingActionButton(
+        FloatingActionButton(
             onClick = { navigateToUploadImage(idSuport, "ticket") },
             containerColor = if (enabled) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary
             else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(48.dp)
+            shape = CircleShape,
+            modifier = Modifier.size(50.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Add,
+                painter = painterResource(R.drawable.ic_plus),
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Observación",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold
-                )
+                modifier = Modifier.size(24.dp)
             )
         }
 
-        ExtendedFloatingActionButton(
+        FloatingActionButton(
             onClick = { navigateToUploadImage(idSuport, "finalizar ticket") },
             containerColor = if (enabled) MaterialTheme.colorScheme.secondary
             else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (enabled) MaterialTheme.colorScheme.onSecondary
             else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(48.dp)
+            shape = CircleShape,
+            modifier = Modifier.size(50.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.CheckCircle,
+                painter = painterResource(R.drawable.ic_upload),
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Finalizar Ticket",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold
-                )
+                modifier = Modifier.size(24.dp)
             )
         }
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun TicketInfoCard(ticket: Ticket?) {
     Card(
@@ -578,11 +480,29 @@ private fun TicketInfoCard(ticket: Ticket?) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
     ) {
+        if (ticket == null) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No hay ticket seleccionado",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+            return@Card
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // ── Header: ID, Prioridad y Estado ───────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -592,47 +512,115 @@ private fun TicketInfoCard(ticket: Ticket?) {
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    ticket?.let {
-                        Text(
-                            text = "Ticket #${it.id_ticket}",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
+                    Text(
+                        text = "Ticket #${ticket.id}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
                         )
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ticket.estado?.let {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                text = it.descripcion ?: "Sin estado",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            ticket?.cliente?.let {
-                ClientInfoSection(it)
+            // ── Cliente ──────────────────────────────────────────────────
+            ticket.cliente?.let { c ->
+                SectionTitle(icon = R.drawable.ic_circle_user_round, title = "Cliente")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Avatar iniciales
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "${c.nombre1.firstOrNull() ?: ""}${c.apellido1.firstOrNull() ?: ""}",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = listOfNotNull(c.nombre1, c.nombre2, c.apellido1, c.apellido2)
+                                .filter { it.isNotBlank() }.joinToString(" "),
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        InfoRow(icon = R.drawable.ic_circle_user_round, text = c.identificacion)
+                        InfoRow(icon = R.drawable.ic_mail, text = c.correo)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PhoneCard(c.telefono1)
+                            c.telefono2?.let { PhoneCard(it) }
+                        }
+                    }
+                }
             }
 
-            Spacer(Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+            // ── Tipo ─────────────────────────────────────────────────────
+
+            SectionTitle(icon = R.drawable.ic_ethernet_port, title = "Tipo ticket")
+            ticket.tipo?.descripcion?.let{ TypeSection(descripcion = it) }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // ── Cuenta ───────────────────────────────────────────────────
+            ticket.cuenta?.let { cuenta ->
+                CuentaInfoSection(cuenta = cuenta)
+                LocationSection(direccion = cuenta.direccion)
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // ── Fechas ───────────────────────────────────────────────────
+            SectionTitle(icon = R.drawable.ic_calendar_days, title = "Fechas")
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ticket?.cuenta?.let {
-                        CuentaInfoSection(cuenta = it)
-                    }
-                }
+                DateChip(label = "Creación", date = ticket.fecha_hora, modifier = Modifier.weight(1f))
             }
 
-            Spacer(Modifier.height(10.dp))
-
-            ticket?.let {
-                it.cuenta?.let { it1 -> LocationSection(direccion = it1.direccion) }
-                Spacer(Modifier.height(20.dp))
-                ObservationSection(it.observacion_ticket)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // ── Observaciones ────────────────────────────────────────────
+            if (ticket.observacion_ticket.isNotBlank()) {
+                SectionTitle(icon = R.drawable.ic_info, title = "Observación")
+                ObservationBox(text = ticket.observacion_ticket)
             }
         }
     }
@@ -672,20 +660,12 @@ private fun HistorySection(
                         modifier = Modifier.fillMaxSize(),
                         enabled = !isLoadingEvidencias
                     ) {
-                        if (isLoadingEvidencias) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        } else {
-                            Icon(
-                                painter = painterResource(R.drawable.visibility_icon),
-                                contentDescription = "Ver evidencia",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.ic_eye),
+                            contentDescription = "Ver evidencia",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
 
@@ -716,15 +696,15 @@ private fun HistorySection(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = observacion.obs.takeIf { it.isNotBlank() }
+                            text = observacion.descripcion.takeIf { it.isNotBlank() }
                                 ?: "Sin observación registrada",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = if (observacion.obs.isNotBlank())
+                                color = if (observacion.descripcion.isNotBlank())
                                     MaterialTheme.colorScheme.onSurface
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontStyle = if (observacion.obs.isNotBlank())
+                                fontStyle = if (observacion.descripcion.isNotBlank())
                                     FontStyle.Normal else FontStyle.Italic
                             )
                         )
@@ -751,7 +731,7 @@ private fun HistorySection(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Person,
+                            painter = painterResource(R.drawable.ic_circle_user_round),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onTertiaryContainer,
                             modifier = Modifier
@@ -761,7 +741,7 @@ private fun HistorySection(
 
                         Text(
                             text = buildString {
-                                append(usuario.nombre_1)
+                                append(usuario.nombre_1 +" "+usuario.apellido_1)
                             }.takeIf { it.isNotBlank() } ?: "Usuario",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = MaterialTheme.colorScheme.onTertiaryContainer,

@@ -35,22 +35,25 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
@@ -58,8 +61,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -117,7 +118,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.inttelgo.tecnicos.R
-import com.inttelgo.tecnicos.logic.Model.Cliente
 import com.inttelgo.tecnicos.logic.Model.Cuenta
 import com.inttelgo.tecnicos.logic.Model.Prioridad
 import com.inttelgo.tecnicos.logic.Model.PriorityData
@@ -139,6 +139,7 @@ import com.inttelgo.tecnicos.logic.Model.FotoSoporte
 import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.FotoInsta
 import com.inttelgo.tecnicos.logic.Model.PrioridadType
+import com.inttelgo.tecnicos.logic.process.OtherOperarions
 
 @SuppressLint("NewApi")
 @Composable
@@ -265,7 +266,7 @@ fun WarningCard(message: String){
 }
 
 @Composable
-fun AnimatedIcon(modifier: Modifier, description: String? = null) {
+fun AnimatedIcon(modifier: Modifier) {
     val scale = remember { Animatable(1f) }
 
     LaunchedEffect(Unit) {
@@ -297,14 +298,6 @@ fun AnimatedIcon(modifier: Modifier, description: String? = null) {
                     .size(60.dp)
                     .scale(scale.value)
             )
-            description?.let{
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
         }
     }
 }
@@ -313,7 +306,7 @@ fun AnimatedIcon(modifier: Modifier, description: String? = null) {
 @Composable
 fun PrioritiesCard(prioritySelected: MutableState<Int>) {
     Row (
-        Modifier.padding(start = 20.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ){
         val listPriorities: List<PriorityData> = listOf(
             PriorityData(0,"Todos","#d0e0f5", "#104493", "#b8d2ef"),
@@ -352,7 +345,6 @@ fun PrioritiesCard(prioritySelected: MutableState<Int>) {
                         .background(Color.Transparent)
                 )
             }
-            Spacer(Modifier.width(10.dp))
         }
     }
 }
@@ -397,51 +389,10 @@ fun ConectionBadge(hasInternetConnection: Boolean){
 }
 
 @Composable
-fun ObservationSection(observacion: String) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "Observación:",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
-            Text(
-                text = observacion,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
-                ),
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-@Composable
 fun CuentaInfoSection(cuenta: Cuenta) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = "Cuenta #${cuenta.numero_cuenta}",
+            text = "Cuenta #${cuenta.nro_cuenta}",
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -457,15 +408,32 @@ fun LocationSection(direccion: String) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.LocationOn,
+            painter = painterResource(id = R.drawable.ic_map_pin),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .size(16.dp)
                 .padding(top = 2.dp)
         )
         Text(
             text = direccion,
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            ),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun TypeSection(descripcion: String) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = descripcion,
             style = MaterialTheme.typography.bodySmall.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
@@ -510,7 +478,7 @@ fun ModernTopAppBar(
                     Column {
                         userPreferences.getUser()?.let {
                             Text(
-                                text = "${it.nombre_1} ${it.apellido_1[0]}.",
+                                text = "${it.name1} ${it.lastname1?.get(0)}.",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -527,7 +495,6 @@ fun ModernTopAppBar(
                 Surface(
                     onClick = { expanded.value = true },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.size(48.dp)
                 ) {
                     Box(
@@ -535,7 +502,7 @@ fun ModernTopAppBar(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
-                            imageVector = Icons.Default.MoreVert,
+                            painter = painterResource(R.drawable.ic_ellipsis_vertical),
                             contentDescription = "Menú",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -560,7 +527,7 @@ fun ModernTopAppBar(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Person,
+                                    painter = painterResource(R.drawable.ic_circle_user_round),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -582,33 +549,6 @@ fun ModernTopAppBar(
                 titleContentColor = MaterialTheme.colorScheme.onSurface
             )
         )
-    }
-}
-
-@Composable
-fun ClientInfoSection(cliente: Cliente?){
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = cliente?.nombre?: "",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            ),
-        )
-        Text(
-            text = cliente?.correo?: "",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            PhoneCard(cliente?.telefono_1?: "")
-            PhoneCard(cliente?.telefono_2?: "")
-        }
     }
 }
 
@@ -721,7 +661,7 @@ fun LazyImages(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (showError) Icons.Default.Warning else Icons.Default.Info,
+                            painter = painterResource( if (showError) R.drawable.ic_octagon_alert else R.drawable.ic_info),
                             contentDescription = null,
                             tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
@@ -865,7 +805,7 @@ private fun CardWithBottomSheet(
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        imageVector = if (showError) Icons.Default.Warning else Icons.Default.Add,
+                        painter = painterResource(if (showError) R.drawable.ic_octagon_alert else R.drawable.ic_plus),
                         contentDescription = if (showError) "Requerido" else "Agregar",
                         tint = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
@@ -900,21 +840,7 @@ private fun CardWithBottomSheet(
                         .padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            "Seleccionar medio",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                            )
-                        )
-                    }
+                    SectionTitle(icon = null, title ="Seleccionar medio")
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1009,7 +935,7 @@ private fun CameraScreen(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
+                    painter = painterResource(R.drawable.ic_camera),
                     contentDescription = "Cámara",
                     tint = Color(0xFFFFA726),
                     modifier = Modifier
@@ -1021,11 +947,6 @@ private fun CameraScreen(
                 "Tomar Foto",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
-                )
-            )
-            Text(
-                "Usar la cámara",
-                style = MaterialTheme.typography.bodySmall.copy(
                 )
             )
         }
@@ -1102,7 +1023,7 @@ private fun VideoCameraScreen(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Favorite,
+                    painter = painterResource(R.drawable.ic_video),
                     contentDescription = "Video",
                     tint = Color(0xFFFF5722),
                     modifier = Modifier
@@ -1115,10 +1036,6 @@ private fun VideoCameraScreen(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                 )
-            )
-            Text(
-                "Grabar con cámara",
-                style = MaterialTheme.typography.bodySmall
             )
         }
     }
@@ -1143,12 +1060,11 @@ private fun MediaSelectorView(
                 isCompressing.value=true
                 coroutineScope.launch {
                     try {
-                        val currentDate = LocalDateTime.now()
                         val compressedFiles = mutableListOf<Uri>()
-
                         // Comprimir cada archivo seleccionado
-                        uris.forEach { uri ->
+                        uris.forEachIndexed { index, uri ->
                             try {
+                                val currentDate = LocalDateTime.now().plusSeconds(index.toLong())
                                 val compressedFile = ImageOperations().uriToFile(context, uri, currentDate)
                                 compressedFile?.let {file ->
                                     try {
@@ -1204,7 +1120,7 @@ private fun MediaSelectorView(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
+                    painter = painterResource(R.drawable.ic_images),
                     contentDescription = "Galería",
                     tint = Color(0xFF666666),
                     modifier = Modifier
@@ -1265,16 +1181,16 @@ fun ImagePreview(imageUri: String, onPreview: () -> Unit, onRemove: () -> Unit) 
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(8.dp)
-                    .size(24.dp)
+                    .size(24.dp) // Tamaño del botón circular
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Eliminar",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .wrapContentSize(Alignment.Center)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_trash),
+                        contentDescription = "Eliminar",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }
@@ -1362,14 +1278,14 @@ fun VideoPreview(videoUri: Uri, context: Context, onPreview: () -> Unit, onRemov
                     .padding(8.dp)
                     .size(24.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Eliminar",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .wrapContentSize(Alignment.Center)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_trash),
+                        contentDescription = "Eliminar",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp) // Reducimos un poco para dar aire
+                    )
+                }
             }
         }
     }
@@ -2397,10 +2313,7 @@ fun HistoryToggle(showHistory: MutableState<Boolean>) {
                             modifier = Modifier.fillMaxSize()
                         ) {
                             Icon(
-                                imageVector = if (showHistory.value)
-                                    Icons.Default.Add
-                                else
-                                    Icons.Default.Close,
+                                painter = painterResource(if (showHistory.value) R.drawable.ic_list_chevrons_up_down else R.drawable.ic_list_down_up),
                                 contentDescription = null,
                                 tint = if (showHistory.value)
                                     MaterialTheme.colorScheme.onPrimaryContainer
@@ -2434,20 +2347,212 @@ fun HistoryToggle(showHistory: MutableState<Boolean>) {
                     label = "arrow_rotation"
                 )
 
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(32.dp)
-                ) {
+                Icon(
+                    painter = painterResource( if (showHistory.value) R.drawable.ic_chevron_down else R.drawable.ic_chevron_down),
+                    contentDescription = if (showHistory.value) "Ocultar historial" else "Mostrar historial",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer { rotationZ = rotation }
+                )            }
+        }
+    }
+}
+@Composable
+fun ObservationBox(text: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 60.dp, max = 120.dp)
+                .padding(14.dp)
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp
+                ),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptyStateCard(
+    icon: Int?,
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .padding(32.dp)
+                .widthIn(max = 400.dp),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                icon?.let {
                     Icon(
-                        painter = painterResource(R.drawable.arrow_drop_down_icon),
-                        contentDescription = if (showHistory.value) "Ocultar historial" else "Mostrar historial",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .graphicsLayer { rotationZ = rotation }
+                        painter = painterResource(it),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                     )
                 }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionTitle(icon: Int? = null, title: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        icon?.let {
+            Icon(
+                painter = painterResource(id = it),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        )
+    }
+}
+
+@Composable
+fun InfoRow(icon: Int?, text: String) {
+    if (text.isBlank()) return
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        icon?.let {
+            Icon(
+                painter = painterResource(it),
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun DateChip(label: String, date: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            Text(
+                text = OtherOperarions().formatFechaBaseDatos(date),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptyHistoryCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_circle_off),
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
+                Text(
+                    text = "Sin historial",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "No hay observaciones registradas",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

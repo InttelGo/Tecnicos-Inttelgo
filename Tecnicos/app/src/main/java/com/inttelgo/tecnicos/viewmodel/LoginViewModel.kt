@@ -7,7 +7,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inttelgo.tecnicos.logic.Model.Request.LoginRequest
+import com.inttelgo.tecnicos.logic.Model.LoginRequest
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.repository.UsuarioRepository
 import com.inttelgo.tecnicos.network.RetrofitClient
@@ -43,10 +43,15 @@ class LoginViewModel (private val repository: UsuarioRepository = UsuarioReposit
                         result.body()?.let {
                             Log.d(tag, it.toString())
                             if(it.success){
-                                userPreferences.saveUser(it.usuario)
-                                userPreferences.saveToken(it.token) // Guardar token
+                                if(it.data != null) {
+                                    Log.d(tag, it.data.toString())
+                                    userPreferences.saveUser(it.data.usuario)
+                                    userPreferences.saveToken(it.data.token) // Guardar token
+                                    RetrofitClient.updateAuthToken(it.data.token, context)
+                                }else{
+                                    _errorMessage.value = it.message
+                                }
                                 userPreferences.saveCredentials(username, password) // Guardar credenciales para auto-login
-                                RetrofitClient.updateAuthToken(it.token, context)
                                 _successMessage.value = it.message
                                 navigateToHome()
                             }else{
@@ -78,13 +83,20 @@ class LoginViewModel (private val repository: UsuarioRepository = UsuarioReposit
             _isLoading.value = true
             viewModelScope.launch {
                 try {
+                    Log.d(tag, "Intentando auto-login con $username y $password")
                     val result = repository.login(LoginRequest(username, password))
                     if (result.isSuccessful && result.body()?.success == true) {
                         result.body()?.let {
-                            userPreferences.saveUser(it.usuario)
-                            userPreferences.saveToken(it.token)
-                            RetrofitClient.updateAuthToken(it.token, context)
-                            navigateToHome()
+                            if(it.data != null){
+                                Log.d(tag, it.data.usuario.toString())
+                                userPreferences.saveUser(it.data.usuario)
+                                userPreferences.saveToken(it.data.token)
+                                RetrofitClient.updateAuthToken(it.data.token, context)
+                                navigateToHome()
+                            }else {
+                                userPreferences.clearUser()
+                                navigateToLogin()
+                            }
                         }
                     } else {
                         // Si falla el auto-login, limpiar credenciales y mostrar login

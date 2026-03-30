@@ -12,25 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,18 +39,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
+import com.inttelgo.tecnicos.components.EmptyStateCard
+import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.ModernDialog
+import com.inttelgo.tecnicos.components.SectionTitle
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
-import com.inttelgo.tecnicos.logic.Model.InfoItem
-import com.inttelgo.tecnicos.logic.Model.UserProfile
+import com.inttelgo.tecnicos.logic.Model.UsuarioAuth
 import com.inttelgo.tecnicos.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,7 +73,7 @@ fun ProfileScreen(
 
     LaunchedEffect (Unit) {
         if (hasInternetConnection.value) {
-            viewModel.loadUserProfile()
+            viewModel.loadUserProfile(context)
         }
     }
 
@@ -102,7 +95,7 @@ fun ProfileScreen(
                 actions = {
                     IconButton(onClick = { showEditDialog.value = true }) {
                         Icon(
-                            imageVector = Icons.Default.Edit,
+                            painter = painterResource(R.drawable.ic_pencil),
                             contentDescription = "Editar perfil",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -121,7 +114,7 @@ fun ProfileScreen(
                 // Sin conexión
                 !hasInternetConnection.value -> {
                     EmptyStateCard(
-                        icon = Icons.Default.Info,
+                        icon = R.drawable.ic_octagon_alert,
                         title = "Sin conexión",
                         message = "Por favor verifica tu conexión a internet",
                         modifier = Modifier.fillMaxSize()
@@ -130,13 +123,13 @@ fun ProfileScreen(
 
                 // Cargando perfil
                 isLoading && userProfile == null -> {
-                    AnimatedIcon(Modifier.fillMaxSize(), "Cargando perfil...")
+                    AnimatedIcon(Modifier.fillMaxSize())
                 }
 
                 // Error al cargar
                 !isLoading && userProfile == null -> {
                     EmptyStateCard(
-                        icon = Icons.Default.Close,
+                        icon = R.drawable.ic_octagon_alert,
                         title = "Error al cargar",
                         message = "No se pudo cargar la información del perfil",
                         modifier = Modifier.fillMaxSize()
@@ -146,7 +139,7 @@ fun ProfileScreen(
                 // Mostrar perfil
                 else -> {
                     ProfileContent(
-                        userProfile = userProfile,
+                        userProfile = userProfile!!,
                         onLogoutClick = { showLogoutDialog.value = true }
                     )
                 }
@@ -179,7 +172,7 @@ fun ProfileScreen(
             userProfile = userProfile,
             onDismiss = { showEditDialog.value = false },
             onConfirm = { name, email, phone ->
-                viewModel.updateProfile(name, email, phone)
+                viewModel.updateProfile(name, email, phone, context)
                 showEditDialog.value = false
             }
         )
@@ -222,7 +215,7 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileContent(
-    userProfile: UserProfile?,
+    userProfile: UsuarioAuth,
     onLogoutClick: () -> Unit
 ) {
     LazyColumn(
@@ -239,36 +232,51 @@ private fun ProfileContent(
 
         // Información personal
         item {
-            InfoSection(
-                title = "Información Personal",
-                items = listOf(
-                    InfoItem(
-                        icon = Icons.Default.Person,
-                        label = "Nombre completo",
-                        value = listOfNotNull(
-                            userProfile?.nombre1,
-                            userProfile?.nombre2,
-                            userProfile?.apellido1,
-                            userProfile?.apellido2
-                        ).joinToString(" ").ifBlank { " " }
-                    ),
-                    InfoItem(
-                        icon = Icons.Default.Email,
-                        label = "Correo electrónico",
-                        value = userProfile?.correo_personal ?: "No disponible"
-                    ),
-                    InfoItem(
-                        icon = Icons.Default.Phone,
-                        label = "Teléfono",
-                        value = userProfile?.telefono1 ?: "No disponible"
-                    ),
-                    InfoItem(
-                        icon = Icons.Default.Info,
-                        label = "Rol",
-                        value = userProfile?.perfil?.rol ?: "N/A"
-                    )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.background
                 )
-            )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Informacion Personal",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    SectionTitle(title = "Nombre")
+                    InfoRow(
+                        icon = R.drawable.ic_circle_user_round, text = listOfNotNull(
+                            userProfile.name1,
+                            userProfile.name2,
+                            userProfile.lastname1,
+                            userProfile.lastname2
+                        ).joinToString(" ").ifBlank { " " }
+                    )
+                    SectionTitle(title = "Correo Personal")
+                    InfoRow(
+                        icon = R.drawable.ic_mail,
+                        text = userProfile.emailPersonal ?: "No disponible"
+                    )
+                    SectionTitle(title = "Telefono")
+                    InfoRow(
+                        icon = R.drawable.ic_phone,
+                        text = userProfile.phone1 ?: "No disponible"
+                    )
+                    SectionTitle(title = "Rol")
+                    InfoRow(icon = R.drawable.ic_info, text = userProfile.profile?.rol ?: "N/A")
+                }
+            }
         }
 
         // Información de la app
@@ -286,7 +294,7 @@ private fun ProfileContent(
 }
 
 @Composable
-private fun ProfileHeader(userProfile: UserProfile?) {
+private fun ProfileHeader(userProfile: UsuarioAuth?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -313,7 +321,7 @@ private fun ProfileHeader(userProfile: UserProfile?) {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Text(
-                        text = userProfile?.nombre1?.firstOrNull()?.uppercase() ?: "U",
+                        text = userProfile?.name1?.firstOrNull()?.uppercase() ?: "U",
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -324,7 +332,7 @@ private fun ProfileHeader(userProfile: UserProfile?) {
 
             // Nombre
             Text(
-                text = userProfile?.nombre1 ?: "Usuario",
+                text = userProfile?.name1 ?: "Usuario",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary
@@ -334,7 +342,7 @@ private fun ProfileHeader(userProfile: UserProfile?) {
 
             // Email
             Text(
-                text = userProfile?.correo_personal ?: "",
+                text = userProfile?.emailPersonal ?: "",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 ),
@@ -347,7 +355,7 @@ private fun ProfileHeader(userProfile: UserProfile?) {
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)
             ) {
                 Text(
-                    text = userProfile?.perfil?.rol ?: "Usuario",
+                    text = userProfile?.profile?.rol ?: "Usuario",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
@@ -355,132 +363,6 @@ private fun ProfileHeader(userProfile: UserProfile?) {
                     )
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun InfoSection(
-    title: String,
-    items: List<InfoItem>
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.background
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            items.forEachIndexed { index, item ->
-                InfoItemRow(item)
-
-                if (index < items.size - 1) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun InfoItemRow(item: InfoItem) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier
-                    .size(24.dp)
-                    .wrapContentSize(Alignment.Center)
-            )
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = item.label,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            Text(
-                text = item.value,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatCard(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(32.dp)
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
@@ -498,7 +380,7 @@ private fun AccountSettingsSection(
         )
     ) {
         SettingsItem(
-            icon = Icons.Default.ExitToApp,
+            icon = R.drawable.ic_log_out,
             title = "Cerrar sesión",
             onClick = onLogoutClick,
             isDestructive = true
@@ -508,7 +390,7 @@ private fun AccountSettingsSection(
 
 @Composable
 private fun SettingsItem(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     onClick: () -> Unit,
     isDestructive: Boolean = false
@@ -530,7 +412,7 @@ private fun SettingsItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(icon),
                 contentDescription = null,
                 tint = if (isDestructive)
                     MaterialTheme.colorScheme.error
@@ -595,13 +477,13 @@ private fun AppInfoSection() {
 
 @Composable
 private fun EditProfileDialog(
-    userProfile: UserProfile?,
+    userProfile: UsuarioAuth?,
     onDismiss: () -> Unit,
     onConfirm: (name: String, email: String, phone: String) -> Unit
 ) {
-    val name = remember { mutableStateOf(userProfile?.nombre1 ?: "") }
-    val email = remember { mutableStateOf(userProfile?.correo_personal ?: "") }
-    val phone = remember { mutableStateOf(userProfile?.telefono1 ?: "") }
+    val name = remember { mutableStateOf(userProfile?.name1 ?: "") }
+    val email = remember { mutableStateOf(userProfile?.emailPersonal ?: "") }
+    val phone = remember { mutableStateOf(userProfile?.phone1 ?: "") }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -671,58 +553,6 @@ private fun EditProfileDialog(
                         Text("Guardar")
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyStateCard(
-    icon: ImageVector,
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(32.dp)
-                .widthIn(max = 400.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.background
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }

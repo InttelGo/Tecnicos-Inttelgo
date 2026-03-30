@@ -11,12 +11,12 @@ import retrofit2.Response
 class ProfileRepository (private val context: Context? = null){
     private val apiService: ApiService = RetrofitClient.api
 
-    suspend fun getUserProfile(): Response<UserProfileResponse> {
-        return apiService.getUserProfile()
+    suspend fun getUserProfile(id: String): Response<UserProfileResponse> {
+        return apiService.getUserProfile(id)
     }
 
-    suspend fun updateUserProfile(request: UpdateProfileRequest): Response<UserProfileResponse> {
-        return apiService.updateUserProfile(request)
+    suspend fun updateUserProfile(id: String, request: UpdateProfileRequest): Response<UserProfileResponse> {
+        return apiService.updateUserProfile(id, request)
     }
 
     suspend fun clearUserSession() {
