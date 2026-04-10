@@ -7,7 +7,7 @@ import android.util.Log
 import com.inttelgo.tecnicos.logic.Model.CreateEvidenciaInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.FinishInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.Request.AddInventaryInstalacionRequest
-import com.inttelgo.tecnicos.logic.Model.Request.ChangeStatusProcesosRequest
+import com.inttelgo.tecnicos.logic.Model.updateInstallationBody
 import com.inttelgo.tecnicos.logic.process.ImageOperations
 import com.inttelgo.tecnicos.network.RetrofitClient
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -27,10 +27,12 @@ class ProcesoRepository {
         filters, pagination, limit, sorting
     )
 
-    suspend fun changeStatus(
-        request: ChangeStatusProcesosRequest,
-    ) = RetrofitClient.api.processChangeStatus(
-        request
+    suspend fun update(
+        id: String,
+        body: updateInstallationBody,
+    ) = RetrofitClient.api.update(
+        id,
+        body
     )
 
     suspend fun  getArticulosInstalacion(id: String) = RetrofitClient.api.getArticulosInstalacion(id)

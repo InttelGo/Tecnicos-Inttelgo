@@ -1,7 +1,9 @@
 package com.inttelgo.tecnicos.layout
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -77,12 +79,20 @@ import com.inttelgo.tecnicos.components.PhoneCard
 import com.inttelgo.tecnicos.components.SectionTitle
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
+import com.inttelgo.tecnicos.logic.Model.EstadoInstalacion
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.Proceso
 import com.inttelgo.tecnicos.logic.Model.Sorting
+import com.inttelgo.tecnicos.logic.Model.Usuario
+import com.inttelgo.tecnicos.logic.Model.updateInstallationBody
+import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.process.OtherOperarions
 import com.inttelgo.tecnicos.viewmodel.ProcesoViewModel
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Proceso(
     navigateToUploadImage: (id: String, type: String) -> Unit,
@@ -100,6 +110,7 @@ fun Proceso(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
     val hasInternetConnection = rememberNetworkConnectivityState(context)
+    val user = UserPreferences(context).getUser()
 
     LaunchedEffect(search.value) {
         if (hasInternetConnection.value) {
@@ -236,7 +247,15 @@ fun Proceso(
                         ProcessList(
                             procesos = procesos!!,
                             onInitProcess = { proceso ->
-                                viewModel.ActualizarEstadoI(proceso, navigateToUploadImage)
+                                val zoneId = ZoneId.of("America/Bogota")
+                                val bogotaTime = ZonedDateTime.now(zoneId)
+                                val fechaIni = bogotaTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                                Log.d("ProcesoViewModel", "prueba de cambio")
+                                viewModel.update(
+                                    proceso,
+                                    updateInstallationBody(null, null, fechaIni, 8, null, user?.id),
+                                    navigateToUploadImage)
+
                             },
                             onLoadMore = {
                                 LoadMoreTrigger(viewModel, filters, sorting)
@@ -558,6 +577,7 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
             SectionTitle(icon = R.drawable.ic_map_pin, "Ubicacion")
             Column (verticalArrangement = Arrangement.spacedBy(8.dp) ){
                 proceso.direccion?.let {InfoRow(icon = null, text = "Dirección: ${it}")}
+                proceso.condominio?.let {InfoRow(icon = null, text = "Condominio: ${it}")}
                 proceso.barrio?.descripcion?.let { InfoRow(icon = null, text = "Barrio: $it") }
             }
 

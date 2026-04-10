@@ -14,7 +14,6 @@ import com.inttelgo.tecnicos.logic.Model.ObsTicketEvidenciaResponse
 import com.inttelgo.tecnicos.logic.Model.ObsTicketResponse
 import com.inttelgo.tecnicos.logic.Model.ProcessWithFiltersResponse
 import com.inttelgo.tecnicos.logic.Model.Request.AddInventaryInstalacionRequest
-import com.inttelgo.tecnicos.logic.Model.Request.ChangeStatusProcesosRequest
 import com.inttelgo.tecnicos.logic.Model.Request.UbicationRequest
 import com.inttelgo.tecnicos.logic.Model.Response.AddInventaryInstalacionResponse
 import com.inttelgo.tecnicos.logic.Model.Response.FinishObservacionResponse
@@ -27,6 +26,7 @@ import com.inttelgo.tecnicos.logic.Model.TareaWithFiltersResponse
 import com.inttelgo.tecnicos.logic.Model.TicketResponse
 import com.inttelgo.tecnicos.logic.Model.UpdateProfileRequest
 import com.inttelgo.tecnicos.logic.Model.UserProfileResponse
+import com.inttelgo.tecnicos.logic.Model.updateInstallationBody
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -51,8 +51,8 @@ interface ApiService {
         @Query("sorting") sorting: String
     ): Response<ProcessWithFiltersResponse>
 
-    @PUT("instalacion/estado")
-    suspend fun processChangeStatus(@Body() request: ChangeStatusProcesosRequest): Response<MessageResponse>
+    @PUT("instalacion/{id}")
+    suspend fun update(@Path("id") id:String, @Body request: updateInstallationBody): Response<MessageResponse>
 
     @GET("articulo/instalacion/{id}")
     suspend fun getArticulosInstalacion(@Path("id") id: String): Response<ArticuloInstResponse>
@@ -128,7 +128,7 @@ interface ApiService {
         @Part media: List<MultipartBody.Part>? = null
     ): Response<ObservacionResponse>
 
-    @GET("instalacion/media/{id}")
+    @GET("instalacion/{id}/media")
     suspend fun consultEvicenciasInstalation(@Path("id") id: String): Response<EvidenciasInstalationResponse>
 
     @Multipart

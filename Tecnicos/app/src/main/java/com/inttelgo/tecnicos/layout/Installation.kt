@@ -875,7 +875,7 @@ private fun VideoPreview(video: FotoInsta, context: Context, onPreview: () -> Un
                         useController = false
                     }
                 },
-                modifier = Modifier.fillMaxWidth().background(Color.White)
+                modifier = Modifier.fillMaxSize()
             )
 
             // Play overlay
@@ -896,24 +896,6 @@ private fun VideoPreview(video: FotoInsta, context: Context, onPreview: () -> Un
                 )
             }
 
-            // Video indicator
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-            ) {
-                Text(
-                    "VIDEO",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
-
             // Remove button
             Surface(
                 onClick = onRemove,
@@ -922,16 +904,16 @@ private fun VideoPreview(video: FotoInsta, context: Context, onPreview: () -> Un
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(8.dp)
-                    .size(24.dp)
+                    .size(24.dp) // Tamaño del botón circular
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_trash),
-                    contentDescription = "Eliminar",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .wrapContentSize(Alignment.Center)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_trash),
+                        contentDescription = "Eliminar",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }

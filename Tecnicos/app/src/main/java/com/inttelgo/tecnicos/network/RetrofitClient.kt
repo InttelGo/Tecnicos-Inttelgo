@@ -20,11 +20,11 @@ import java.security.cert.X509Certificate
 
 @SuppressLint("StaticFieldLeak")
 object RetrofitClient {
-    private const val BASE_URL = "https://internetdedicado.com.co/api/" //"http://192.168.1.64:3000/api/"
+    private const val BASE_URL = "http://192.168.1.53:3000/api/" //"https://internetdedicado.com.co/api/"
     private const val TAG = "RetrofitClient"
 
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.HEADERS
     }
 
     // Se inicializan con valores por defecto
@@ -67,8 +67,8 @@ object RetrofitClient {
         return OkHttpClient.Builder().apply {
             connectTimeout(30, TimeUnit.SECONDS)
             readTimeout(300, TimeUnit.SECONDS)
-            writeTimeout(180, TimeUnit.SECONDS)
-            callTimeout(360, TimeUnit.SECONDS)
+            writeTimeout(300, TimeUnit.SECONDS)
+            callTimeout(420, TimeUnit.SECONDS)
             addInterceptor(logging)
             addInterceptor(AuthInterceptor())
             addInterceptor(TokenRefreshInterceptor())
@@ -107,7 +107,6 @@ object RetrofitClient {
 
             // Si recibimos un 401 o 403, intentar renovar el token
             if ((response.code == 401 || response.code == 403) && context != null) {
-                Log.d(TAG, "Token expirado, intentando renovar...")
                 val userPreferences = UserPreferences(context!!)
 
                 if (userPreferences.hasSavedCredentials()) {

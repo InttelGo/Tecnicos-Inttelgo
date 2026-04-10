@@ -11,6 +11,7 @@ import android.os.Build
 import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,12 +27,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -96,6 +101,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -133,6 +140,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.core.graphics.toColorInt
+import coil.compose.rememberAsyncImagePainter
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.inttelgo.tecnicos.logic.Model.FotoSoporte
@@ -1250,23 +1258,6 @@ fun VideoPreview(videoUri: Uri, context: Context, onPreview: () -> Unit, onRemov
                 )
             }
 
-            // Video indicator
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-            ) {
-                Text(
-                    "VIDEO",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
 
             // Remove button
             Surface(
@@ -1276,14 +1267,14 @@ fun VideoPreview(videoUri: Uri, context: Context, onPreview: () -> Unit, onRemov
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(8.dp)
-                    .size(24.dp)
+                    .size(24.dp) // Tamaño del botón circular
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         painter = painterResource(R.drawable.ic_trash),
                         contentDescription = "Eliminar",
                         tint = Color.White,
-                        modifier = Modifier.size(14.dp) // Reducimos un poco para dar aire
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -1407,31 +1398,32 @@ fun SingleMediaPreview(
         }
     }
 }
-
 @Composable
-fun SingleFotoInstaPreview (
+fun SingleFotoInstaPreview(
     media: MutableState<FotoInsta?>,
     context: Context,
     onClose: () -> Unit
 ) {
+    BackHandler(enabled = media.value != null) {
+        onClose()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.95f)),
         contentAlignment = Alignment.Center
     ) {
-
-        // Main media content
         media.value?.let {
             FotoInstaContent(
                 uri = it,
                 context = context,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 80.dp, horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .padding(vertical = 56.dp)
             )
         }
-        // Top bar with close button and counter
+
         Surface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -1444,75 +1436,20 @@ fun SingleFotoInstaPreview (
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Close button
                 Surface(
                     onClick = onClose,
                     shape = CircleShape,
                     color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            painter = painterResource(R.drawable.ic_x),
                             contentDescription = "Cerrar",
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                }
-            }
-        }
-
-        // Bottom info bar
-        Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars),
-            color = Color.Black.copy(alpha = 0.7f)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Media type indicator
-                val mediaType = media.value?.link?.contains("mp4")
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (mediaType == true)
-                            Icons.Default.PlayArrow
-                        else
-                            Icons.Default.Favorite,
-                        contentDescription = "Tipo de media",
-                        tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = if (mediaType == true) "Video" else "Imagen",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    )
-                }
-
-                val fileName = media.value?.link
-
-                fileName?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color.White.copy(alpha = 0.7f)
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(start = 16.dp)
-                    )
                 }
             }
         }
@@ -1564,19 +1501,54 @@ private fun FotoInstaContent(
         if (isVideo) {
             AdvancedVideoLinkPlayer(uri, context)
         } else {
-            // Image viewer
-            AsyncImage(
-                model = uri.link,
+            // Estados del zoom
+            var scale by remember { mutableStateOf(1f) }
+            var offset by remember { mutableStateOf(Offset.Zero) }
+
+            val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+                scale = (scale * zoomChange).coerceIn(1f, 5f) // zoom entre 1x y 5x
+                offset += panChange * scale
+            }
+
+            // Resetear al soltar si el zoom vuelve a 1x
+            LaunchedEffect(scale) {
+                if (scale == 1f) offset = Offset.Zero
+            }
+
+            val painter = rememberAsyncImagePainter(model = uri.link)
+            val intrinsicSize = painter.intrinsicSize
+            val isSizeSpecified = intrinsicSize.isSpecified && !intrinsicSize.isEmpty()
+            val aspectRatio = if (isSizeSpecified) intrinsicSize.width / intrinsicSize.height else 1f
+            val isLandscape = isSizeSpecified && intrinsicSize.width > intrinsicSize.height
+
+            Image(
+                painter = painter,
                 contentDescription = "Imagen seleccionada",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (isSizeSpecified) {
+                            if (isLandscape) Modifier.aspectRatio(aspectRatio)
+                            else Modifier.fillMaxHeight()
+                        } else {
+                            Modifier.aspectRatio(1f)
+                        }
+                    )
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Transparent)
+                    // 👇 Aplicamos transformaciones de zoom y pan
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .transformable(state = transformState)
             )
         }
     }
 }
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(UnstableApi::class)
@@ -2487,6 +2459,7 @@ fun InfoRow(icon: Int?, text: String) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DateChip(label: String, date: String, modifier: Modifier = Modifier) {
     Surface(

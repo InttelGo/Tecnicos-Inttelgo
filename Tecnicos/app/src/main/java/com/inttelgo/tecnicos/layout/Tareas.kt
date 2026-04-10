@@ -56,6 +56,7 @@ import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.CuentaInfoSection
 import com.inttelgo.tecnicos.components.DateChip
 import com.inttelgo.tecnicos.components.EmptyStateCard
+import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.LocationSection
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.ObservationBox
@@ -374,6 +375,7 @@ private fun TareaCard(
                     tarea.cuenta?.let { cuenta ->
                         CuentaInfoSection(cuenta = cuenta)
                         LocationSection(direccion = cuenta.direccion)
+                        InfoRow(icon = R.drawable.ic_map_pin, text = cuenta.condominio)
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Surface(

@@ -5,6 +5,7 @@ data class Proceso(
     val identificacion: String? = null,
     val nombre: String? = null,
     val direccion: String? = null,
+    val condominio: String? = null,
     val telefonos: String? = null,
     val fecha_r: String? = "",
     val fecha_i: String? = "",
@@ -28,7 +29,7 @@ data class ProcessWithFiltersResponse (
 data class EvidenciasInstalationResponse(
     val success: Boolean = false,
     val message: String = "",
-    val evidencias: List<FotoInsta>? = null
+    val medias: List<FotoInsta>? = null
 )
 
 data class CreateEvidenciaInstalationResponse(
@@ -40,4 +41,14 @@ data class CreateEvidenciaInstalationResponse(
 data class FinishInstalationResponse(
     val success: Boolean = false,
     val message: String = ""
+)
+
+data class updateInstallationBody(
+    val fecha_r: String? = null,
+    val fecha_i: String? = null,
+    val fecha_ini: String? = null,
+    val estado: Number? = null,
+    val usuario_creacion: Number?=null,
+    val usuario_inicio: Number?=null,
+    val usuario_finalizacion: Number?=null
 )

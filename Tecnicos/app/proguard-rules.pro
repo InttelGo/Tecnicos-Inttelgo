@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keep class com.arthenica.smartexception.** { *; }
+-keep class com.arthenica.ffmpegkit.** { *; }
+-dontwarn com.arthenica.smartexception.**

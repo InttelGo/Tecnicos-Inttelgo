@@ -15,8 +15,8 @@ import com.inttelgo.tecnicos.logic.Model.Articulo
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.FotoInsta
 import com.inttelgo.tecnicos.logic.Model.Proceso
-import com.inttelgo.tecnicos.logic.Model.Request.ChangeStatusProcesosRequest
 import com.inttelgo.tecnicos.logic.Model.Sorting
+import com.inttelgo.tecnicos.logic.Model.updateInstallationBody
 import com.inttelgo.tecnicos.logic.persistence.Localizacion
 import com.inttelgo.tecnicos.logic.repository.ProcesoRepository
 import kotlinx.coroutines.Dispatchers
@@ -89,7 +89,6 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
                     repository.consultWithFilter(filtersjson, currentPage.value, limit, sortingjson)
                 if (result.isSuccessful) {
                     result.body()?.let {
-                        Log.d(tag, it.toString())
                         if (currentPage.value == 1 || filters[0].operator == "equals") {
                             _procesosData.value = it.procesos
                         } else {
@@ -111,13 +110,13 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
         }
     }
 
-    fun ActualizarEstadoI(proceso: Proceso, navigateToUploadImage: (id: String, type: String) -> Unit) {
+    fun update(proceso: Proceso, updateBody: updateInstallationBody, navigateToUploadImage: (id: String, type: String) -> Unit) {
         _isLoadingInstalacion.value = true
         viewModelScope.launch {
             try {
                 if (proceso.estado?.id == 7) {
-                    val result = proceso.id?.let { repository.changeStatus(ChangeStatusProcesosRequest(it, 8)) }
-                    result?.let {
+                    val result =  repository.update(proceso.id.toString(), updateBody)
+                    result.let {
                         if (it.isSuccessful) {
                             result.body()?.let {
                                 _successChangeStatus.value = it.success
@@ -146,10 +145,8 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
                 val result = repository.consultEvicencias(id)
                 if (result.isSuccessful) {
                     result.body()?.let {
-                        Log.d(tag, it.toString())
-                        _selectedImages.value = it.evidencias
+                        _selectedImages.value = it.medias
                     }
-
                     _isLoadingInstalacion.value = false
                 } else {
                     _errorMessage.value = "Error al consultar las instalaciones"
@@ -158,7 +155,6 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
                 _errorMessage.value = "Ha ocurrido un error en la conexion"
                 e.message?.let { Log.e(tag, it) }
             }
-
         }
     }
 
@@ -200,46 +196,70 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
-    fun createEvidencia(id: String, uri: Uri, context: Context){
+    fun createEvidencia(id: String, uri: Uri, context: Context) {
         _isUploadingFile.value = true
+        // Log del archivo
+        try {
+            val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
+            val fileSizeBytes = fileDescriptor?.statSize ?: 0
+            val fileSizeMB = fileSizeBytes / (1024.0 * 1024.0)
+            val mimeType = context.contentResolver.getType(uri)
+            fileDescriptor?.close()
+        } catch (e: Exception) {
+            Log.e(tag, "❌ [createEvidencia] Error leyendo metadata del archivo: ${e.message}")
+        }
+
         viewModelScope.launch {
             val ubicacion = locationService.getUserLocation(context)
-            ubicacion?.let {
-                try {
-                    val result = repository.createEvidencia(
-                        id,
-                        image = uri,
-                        latitud = it.latitude,
-                        longitud = it.longitude,
-                        context
-                    )
-                    if(result.isSuccessful){
-                        result.body()?.let { resp ->
-                            Log.d(tag, resp.toString())
 
-                            if(resp.success){
-                                resp.evidencia?.let {foto ->
-                                    _selectedImages.value = _selectedImages.value?.plus(listOf(foto))
-                                }
-                            }
-
-                        }
-                    }
-
-                }catch (e: Exception) {
-                    _errorMessage.value = "Ha ocurrido un error en la conexion"
-                    e.message?.let { Log.e(tag, it) }
-                }
+            if (ubicacion == null) {
+                Log.e(tag, "❌ [createEvidencia] No se pudo obtener la ubicación, abortando subida")
+                _errorMessage.value = "No se pudo obtener la ubicación"
+                _isUploadingFile.value = false
+                return@launch
             }
 
+            try {
+                val startTime = System.currentTimeMillis()
+
+                val result = repository.createEvidencia(
+                    id,
+                    image = uri,
+                    latitud = ubicacion.latitude,
+                    longitud = ubicacion.longitude,
+                    context
+                )
+
+                val elapsed = System.currentTimeMillis() - startTime
+
+                if (result.isSuccessful) {
+                    result.body()?.let { resp ->
+
+                        if (resp.success) {
+                            resp.evidencia?.let { foto ->
+                                _selectedImages.value = _selectedImages.value?.plus(listOf(foto))
+                            } ?: Log.w(tag, "⚠️ [createEvidencia] success=true pero evidencia es null")
+                        } else {
+                            Log.e(tag, "❌ [createEvidencia] El servidor respondió success=false")
+                        }
+                    } ?: Log.e(tag, "❌ [createEvidencia] Body es null")
+                } else {
+                    val errorBody = result.errorBody()?.string()
+                    Log.e(tag, "❌ [createEvidencia] Error HTTP ${result.code()}: $errorBody")
+                    _errorMessage.value = "Error al subir el archivo (${result.code()})"
+                }
+
+            } catch (e: Exception) {
+                Log.e(tag, "❌ [createEvidencia] Excepción: ${e::class.simpleName} - ${e.message}")
+                Log.e(tag, "❌ [createEvidencia] StackTrace: ${e.stackTraceToString()}")
+                _errorMessage.value = "Ha ocurrido un error en la conexion"
+            } finally {
+                _isUploadingFile.value = false
+            }
         }
-        _isUploadingFile.value = false
-
     }
-
     fun removeMedia(media: FotoInsta){
         viewModelScope.launch {
-            Log.d(tag, media.toString())
             val result = repository.deleteImage(media.id)
 
             if(result.isSuccessful){
@@ -272,7 +292,6 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
                     val gson = Gson()
                     articulosjson = gson.toJson(articulosFiltrados)
                 }
-                Log.d(tag, articulosjson)
                 val result = repository.finish(
                     id,
                     observacion = observacion.value,
@@ -294,7 +313,6 @@ class ProcesoViewModel(private val repository: ProcesoRepository = ProcesoReposi
 
     // En ProcesoViewModel
     fun updateArticulo(updatedArticle: Articulo) {
-        Log.d(tag, updatedArticle.toString())
         _articlesData.value = _articlesData.value.map {
             if (it.id == updatedArticle.id) updatedArticle else it
         }
