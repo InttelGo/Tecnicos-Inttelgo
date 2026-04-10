@@ -77,7 +77,8 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     
     //ffmpeg
-    implementation ("com.arthenica:ffmpeg-kit-full-gpl:6.0")
+    implementation(files("libs/ffmpeg-kit-full-gpl-6.0-2.LTS.aar"))
+    implementation("com.arthenica:smart-exception-java:0.2.1")
 
     //Animations
     implementation (libs.lottie.compose)

@@ -36,6 +36,7 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.LocalDateTime
@@ -174,10 +175,14 @@ class UploadImageViewModel : ViewModel(){
 
                 try {
                     val file = uriToFile(context, uri, idTicket, currentDate, address)
-                    val requestBody = file?.let {
-                        MultipartBody.Builder()
+                    if (file == null) {
+                        Log.e(TAG, "No se pudo preparar el archivo para subir: $uri")
+                        _errorMessage.value = "No se pudo procesar el video. Intenta de nuevo o elige uno de la galería."
+                        continue
+                    }
+                    val requestBody = MultipartBody.Builder()
                             .setType(MultipartBody.FORM)
-                            .addFormDataPart("image", it.name, it.asRequestBody("image/*".toMediaType()))
+                            .addFormDataPart("image", file.name, file.asRequestBody("image/*".toMediaType()))
                             .addFormDataPart("idObs", idObs.toString())
                             .addFormDataPart("date", currentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                             .addFormDataPart("tipo", type)
@@ -185,11 +190,11 @@ class UploadImageViewModel : ViewModel(){
                             .addFormDataPart("idIn", idTicket)
                             .addFormDataPart("ubication", address)
                             .build()
-                    }
+
 
                     val request = Request.Builder()
                         .url("https://app.inttelgo.com/Tecnicos/?pid=${RetroFitService.encodeToBase64("pages/upload.php")}")
-                        .post(requestBody!!)
+                        .post(requestBody)
                         .build()
 
                     val response = client.newCall(request).execute()
@@ -215,8 +220,6 @@ class UploadImageViewModel : ViewModel(){
         }
     }
 
-
-
     @SuppressLint("NewApi")
     private suspend fun compressVideo(
         context: Context,
@@ -227,100 +230,117 @@ class UploadImageViewModel : ViewModel(){
     ): File? {
         _isUploadingFile.value = true
         return suspendCoroutine { continuation ->
-            val inputPath =
-                getPathFromUri(context, inputUri) ?: return@suspendCoroutine continuation.resume(
-                    null
-                )
-
+            val inputPath = getPathFromUri(context, inputUri)
+            if (inputPath == null) {
+                Log.e("VideoCompression", "getPathFromUri devolvió null para $inputUri")
+                _isUploadingFile.value = false
+                continuation.resume(null)
+                return@suspendCoroutine
+            }
             val inputFile = File(inputPath)
-            val inputSize = inputFile.length() / 1024 // Tamaño en KB
-
-            Log.d("VideoCompression", "Tamaño inicial: ${inputSize}KB")
-
-            // Archivo temporal intermedio codificado en H.264
-            val h264File = File(context.cacheDir, "encoded_h264.mp4")
+            val inputSizeKb = inputFile.length() / 1024
+            Log.d("VideoCompression", "Tamaño inicial: ${inputSizeKb}KB path=$inputPath")
+            if (inputFile.length() <= 0L) {
+                Log.e("VideoCompression", "Archivo de entrada vacío")
+                _isUploadingFile.value = false
+                continuation.resume(null)
+                return@suspendCoroutine
+            }
+            val h264File = File(context.cacheDir, "encoded_h264_${System.currentTimeMillis()}.mp4")
             val h264Path = h264File.absolutePath
-
-            Log.d(
-                "VideoCompression",
-                "Ruta de salida H.264: $h264Path, puede escribir: ${h264File.canWrite()}, existe: ${h264File.exists()}"
-            )
-
-
-            // Comando para codificar a H.264
+            val inPathEscaped = escapeForFfmpegPath(inputPath)
+            val h264PathEscaped = escapeForFfmpegPath(h264Path)
             val encodeCommand =
-                "-y -i $inputPath -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -strict experimental -b:a 100k $h264Path"
-
+                "-y -i $inPathEscaped -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -b:a 100k $h264PathEscaped"
             FFmpegKit.executeAsync(encodeCommand) { encodeSession ->
-                if (ReturnCode.isSuccess(encodeSession.returnCode)) {
-                    Log.d("VideoCompression", "Codificación a H.264 completada")
-
-                    Log.d(
-                        "VideoCompression",
-                        "$idSupport-${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth}-${currentDate.hour}.${currentDate.minute}.${currentDate.second}.mp4"
-                    )
-                    // Archivo de salida comprimido
-                    val outputFile = File(
-                        context.cacheDir,
-                        "$idSupport-${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth}-${currentDate.hour}.${currentDate.minute}.${currentDate.second}.mp4"
-                    )
-                    val outputPath = outputFile.absolutePath
-
-                    // Comando de compresión
-                    val compressCommand =
-                        "-y -i $h264Path -vf \"scale=480:854,drawtext=fontfile=/system/fonts/Roboto-Regular.ttf:text='$address':x=10:y=30:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5\" -vcodec libx264 -crf 28 -preset fast -b:v 800k -c:a aac -b:a 128k $outputPath"
-                    Log.d(
-                        "VideoCompression",
-                        "Comando de compresión: -y -i $h264Path -vf \"scale=480:854, drawtext=text='$address':x=10:y=30:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5\" -vcodec libx264 -crf 28 -preset fast -b:v 800k -c:a aac -b:a 128k $outputPath"
-                    )
-
-                    val checkFormatCommand = "-i $inputPath"
-                    FFmpegKit.executeAsync(checkFormatCommand) { checkSession ->
-                        Log.d(
-                            "VideoCompression",
-                            "Detalles del archivo: ${checkSession.allLogsAsString}"
-                        )
-                    }
-                    FFmpegKit.executeAsync(compressCommand) { compressSession ->
-                        if (ReturnCode.isSuccess(compressSession.returnCode)) {
-                            val outputSize = outputFile.length() / 1024 // Tamaño final en KB
-                            Log.d("VideoCompression", "Tamaño después de la compresión: ${outputSize}KB")
-
-                            // 🔔 Mostrar notificación de éxito
-                            showNotification(context, "Video Enviado", "El video se ha comprimido y enviado correctamente.")
-                            _isUploadingFile.value = false
-                            continuation.resume(outputFile)
-                        } else {
-                            Log.e("VideoCompression", "Error en la compresión: ${compressSession.failStackTrace}")
-                            _isUploadingFile.value = false
-                            continuation.resume(null)
-                        }
-                    }
-
-                } else {
+                if (!ReturnCode.isSuccess(encodeSession.returnCode)) {
                     Log.e(
                         "VideoCompression",
-                        "Error en la codificación a H.264: ${encodeSession.allLogsAsString}"
+                        "Error codificación H.264: ${encodeSession.allLogsAsString}"
                     )
                     _isUploadingFile.value = false
                     continuation.resume(null)
+                    return@executeAsync
+                }
+                Log.d("VideoCompression", "Codificación a H.264 completada")
+                val safeName =
+                    "$idSupport-${currentDate.year}-${currentDate.monthValue}-${currentDate.dayOfMonth}-${currentDate.hour}.${currentDate.minute}.${currentDate.second}.mp4"
+                val outputFile = File(context.cacheDir, safeName)
+                val outputPath = outputFile.absolutePath
+                val outputPathEscaped = escapeForFfmpegPath(outputPath)
+                val textForDraw = escapeForDrawtext(address)
+                val fontEscaped = escapeForFfmpegPath("/system/fonts/Roboto-Regular.ttf")
+                val compressCommand =
+                    "-y -i $h264PathEscaped -vf \"scale=480:854,drawtext=fontfile=$fontEscaped:text='$textForDraw':x=10:y=30:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5\" " +
+                            "-vcodec libx264 -crf 28 -preset fast -b:v 800k -c:a aac -b:a 128k $outputPathEscaped"
+                Log.d("VideoCompression", "compressCommand=$compressCommand")
+                FFmpegKit.executeAsync(compressCommand) { compressSession ->
+                    if (ReturnCode.isSuccess(compressSession.returnCode)) {
+                        Log.d(
+                            "VideoCompression",
+                            "Tamaño final: ${outputFile.length() / 1024}KB"
+                        )
+                        showNotification(
+                            context,
+                            "Video Enviado",
+                            "El video se ha comprimido correctamente."
+                        )
+                        _isUploadingFile.value = false
+                        continuation.resume(outputFile)
+                    } else {
+                        Log.e(
+                            "VideoCompression",
+                            "Error compresión: ${compressSession.allLogsAsString}"
+                        )
+                        _isUploadingFile.value = false
+                        continuation.resume(null)
+                    }
                 }
             }
         }
     }
 
-    private fun getPathFromUri(context: Context, uri: Uri): String? {
-        val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-        inputStream?.use { input ->
-            val file = File(context.cacheDir, getFileName(context, uri))
-            FileOutputStream(file).use { output ->
-                input.copyTo(output)
-            }
-            return file.absolutePath
-        }
-        return null
+    /** Comillas simples en FFmpeg filtergraph rompen drawtext; escapar para text='...' */
+    private fun escapeForDrawtext(address: String): String {
+        return address
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace(":", "\\:")
+            .replace("%", "\\%")
+    }
+    /** Espacios y caracteres especiales en rutas de entrada/salida */
+    private fun escapeForFfmpegPath(path: String): String {
+        val p = path.replace("'", "'\\''")
+        return "'$p'"
     }
 
+    private fun getPathFromUri(context: Context, uri: Uri): String? {
+        val baseName = getFileName(context, uri).ifBlank {
+            "video_${System.currentTimeMillis()}.mp4"
+        }
+        val out = File(context.cacheDir, "upload_${System.currentTimeMillis()}_$baseName")
+        fun tryCopy(): Boolean {
+            return try {
+                val copied = context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    FileInputStream(pfd.fileDescriptor).use { input ->
+                        FileOutputStream(out).use { output -> input.copyTo(output) }
+                    }
+                } ?: context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(out).use { output -> input.copyTo(output) }
+                }
+                copied != null && out.exists() && out.length() > 8 * 1024L
+            } catch (e: Exception) {
+                Log.e("VideoCompression", "copy failed uri=$uri", e)
+                false
+            }
+        }
+        repeat(10) {
+            if (tryCopy()) return out.absolutePath
+            Thread.sleep(200L)
+        }
+        out.delete()
+        return null
+    }
     private fun getFileName(context: Context, uri: Uri): String {
         var name = "temp_file.mp4"
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -430,14 +450,45 @@ class UploadImageViewModel : ViewModel(){
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private suspend fun uriToFile(context: Context, uri: Uri, idSupport: String, currentDate: LocalDateTime, adress: String): File? {
+    private suspend fun uriToFile(
+        context: Context,
+        uri: Uri,
+        idSupport: String,
+        currentDate: LocalDateTime,
+        adress: String
+    ): File? {
         val contentResolver = context.contentResolver
-        val mimeType = contentResolver.getType(uri)
+        val name = getFileName(context, uri)
+        val mimeType = contentResolver.getType(uri) ?: guessMimeFromName(name)
 
         return when {
-            mimeType?.startsWith("image") == true -> compressImage(context, uri, idSupport, currentDate)
-            mimeType?.startsWith("video") == true -> compressVideo(context, uri, idSupport, currentDate, adress)
-            else -> throw IllegalArgumentException("Formato de archivo no compatible")
+            mimeType?.startsWith("image") == true ->
+                compressImage(context, uri, idSupport, currentDate)
+            mimeType?.startsWith("video") == true ->
+                compressVideo(context, uri, idSupport, currentDate, adress)
+            else -> {
+                // último recurso: por extensión, la cámara a veces no informa tipo
+                when {
+                    name.lowercase(Locale.getDefault()).let { n ->
+                        n.endsWith(".mp4") || n.endsWith(".m4v") || n.endsWith(".3gp")
+                    } -> compressVideo(context, uri, idSupport, currentDate, adress)
+                    name.lowercase(Locale.getDefault()).let { n ->
+                        n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
+                    } -> compressImage(context, uri, idSupport, currentDate)
+                    else -> throw IllegalArgumentException("Formato de archivo no compatible (tipo=$mimeType, nombre=$name)")
+                }
+            }
+        }
+    }
+
+    private fun guessMimeFromName(name: String): String? {
+        val lower = name.lowercase(Locale.getDefault())
+        return when {
+            lower.endsWith(".mp4") || lower.endsWith(".m4v") -> "video/mp4"
+            lower.endsWith(".3gp") -> "video/3gpp"
+            lower.endsWith(".jpg") || lower.endsWith(".jpeg") -> "image/jpeg"
+            lower.endsWith(".png") -> "image/png"
+            else -> null
         }
     }
 
