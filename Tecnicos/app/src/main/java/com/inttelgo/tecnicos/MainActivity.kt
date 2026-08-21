@@ -1,21 +1,21 @@
 package com.inttelgo.tecnicos
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.fragment.app.FragmentActivity
+import com.inttelgo.tecnicos.logic.notifications.NotificationHelper
 import com.inttelgo.tecnicos.logic.persistence.LocationService
 import com.inttelgo.tecnicos.navigation.AppNavigation
 import com.inttelgo.tecnicos.network.RetrofitClient
 import com.inttelgo.tecnicos.ui.theme.TecnicosTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @SuppressLint("NewApi")
     @RequiresApi(Build.VERSION_CODES.O)
@@ -25,8 +25,9 @@ class MainActivity : ComponentActivity() {
 
         // Inicializar RetrofitClient con el contexto
         RetrofitClient.initialize(this)
+        NotificationHelper.createChannels(this)
 
-        // Verificar y solicitar permisos de ubicación
+        // Verificar y solicitar permisos de ubicación / notificaciones
         requestPermissionsIfNeeded()
 
         setContent {
@@ -38,9 +39,10 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            val allGranted = permissions.values.all { it }
-            if (allGranted) {
-                startLocationService()
+            val locationGranted = (permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true) ||
+                    (permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true)
+            if (locationGranted) {
+                startLocationServiceIfNeeded()
             } else {
                 Toast.makeText(this, "Permisos denegados. Algunas funciones no estarán disponibles.", Toast.LENGTH_LONG).show()
             }
@@ -52,7 +54,6 @@ class MainActivity : ComponentActivity() {
             android.Manifest.permission.ACCESS_COARSE_LOCATION
         )
 
-        // Si el dispositivo es Android 13+, agregamos el permiso de notificación
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -60,7 +61,7 @@ class MainActivity : ComponentActivity() {
         if (!checkPermissions(permissionsToRequest)) {
             requestPermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
-            startLocationService()
+            startLocationServiceIfNeeded()
         }
     }
 
@@ -68,9 +69,9 @@ class MainActivity : ComponentActivity() {
         return permissions.all { checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
     }
 
-    @SuppressLint("NewApi")
-    private fun startLocationService() {
-        val serviceIntent = Intent(this, LocationService::class.java)
-        startForegroundService(serviceIntent) // Usar startForegroundService para servicios en segundo plano en Android 8.0+
+    private fun startLocationServiceIfNeeded() {
+        // Solo trackea en jornada laboral 8am-7pm (Bogotá).
+        // Fuera de horario no se inicia el servicio (ni su notificación).
+        LocationService.startIfWorkHours(this)
     }
 }

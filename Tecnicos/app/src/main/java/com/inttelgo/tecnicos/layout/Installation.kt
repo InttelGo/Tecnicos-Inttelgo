@@ -1,8 +1,10 @@
 package com.inttelgo.tecnicos.layout
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -17,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,7 +38,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
@@ -43,17 +45,19 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -70,32 +74,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.inttelgo.tecnicos.components.CustomButton
+import com.inttelgo.tecnicos.components.BlockingLoadingOverlay
+import com.inttelgo.tecnicos.components.MediaGalleryDialogFotoInsta
+import com.inttelgo.tecnicos.components.SignatureDialog
 import com.inttelgo.tecnicos.components.TextArea
 import com.inttelgo.tecnicos.logic.Model.FotoInsta
 import com.inttelgo.tecnicos.logic.process.ImageOperations
 import com.inttelgo.tecnicos.viewmodel.ProcesoViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDateTime
-import com.github.gcacace.signaturepad.views.SignaturePad
 import com.inttelgo.tecnicos.R
+import com.inttelgo.tecnicos.components.FechaInfo
+import com.inttelgo.tecnicos.components.InfoDateChip
+import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.NumberField
+import com.inttelgo.tecnicos.components.ObservationBox
+import com.inttelgo.tecnicos.components.PhoneCard
 import com.inttelgo.tecnicos.components.SectionTitle
+import com.inttelgo.tecnicos.components.estadoLabel
 import com.inttelgo.tecnicos.logic.Model.DialogType
+import com.inttelgo.tecnicos.logic.Model.Proceso
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -113,25 +128,52 @@ fun Installation (
     val errorMessage by viewModel.errorMessage.collectAsState()
     val warningMessage by viewModel.warningMessage.collectAsState()
     val selectedImages by viewModel.selectedImages.collectAsState()
-    val observacion =  remember { mutableStateOf("") }
+    val observacion = remember { mutableStateOf("") }
     val isLoading by viewModel.retrofitLoading.collectAsState()
     val successMessage by viewModel.successFinishMessage.collectAsState()
-    val isFormValid =  selectedImages?.isNotEmpty() == true
+
+    // ── Estado de validación por campo ──────────────────────────────────
+    // Se calcula una sola vez y se reutiliza tanto para el checklist de
+    // progreso como para habilitar/deshabilitar el botón final, así ambos
+    // SIEMPRE están de acuerdo (antes el TextArea marcaba "required = true"
+    // visualmente pero no se validaba realmente al enviar).
+    val hasMedia = selectedImages?.isNotEmpty() == true
+    val observacionValid = observacion.value.isNotBlank()
+    val isFormValid = hasMedia && observacionValid
+
+    val disabledReason = when {
+        !hasMedia -> "Agrega evidencia"
+        !observacionValid -> "Agrega una observación"
+        else -> "Campos vacíos"
+    }
+
     val showSignatureDialog = remember { mutableStateOf(false) }
     val signatureBitmap = remember { mutableStateOf<Bitmap?>(null) }
-    val articulosData by viewModel.articlesData.collectAsState()
+    // Por el momento no se solicita material al finalizar instalación
+    // val articulosData by viewModel.articlesData.collectAsState()
+    val instalacionData by viewModel.instalacionData.collectAsState()
+    val showGallery = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.consultEvicencias(id)
-        viewModel.consultArticulos(id)
+        // viewModel.consultArticulos(id)
+        viewModel.consultInstalacion(id)
     }
 
-    if (showSignatureDialog.value) {
+    if (showSignatureDialog.value && !isLoading) {
         SignatureDialog(
-            onConfirm = { bitmap ->
-                signatureBitmap.value = bitmap
+            onConfirm = { signature ->
+                signatureBitmap.value = signature.bitmap
                 showSignatureDialog.value = false
-                viewModel.finish(id, observacion, signatureBitmap.value, context)
+                viewModel.finish(
+                    id = id,
+                    observacion = observacion,
+                    signatureBitmap = signature.bitmap,
+                    context = context,
+                    esEncargado = signature.esEncargado,
+                    nombreEncargado = signature.nombreEncargado,
+                    identificacionEncargado = signature.identificacionEncargado
+                )
             },
             onCancel = {
                 // Limpiar el dibujo y cerrar diálogo
@@ -141,260 +183,488 @@ fun Installation (
         )
     }
 
-    LazyColumn (
-        modifier = modifier.padding(vertical = 16.dp)){
-        item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
-                    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn (
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 16.dp),
+            // Un solo valor de espaciado para TODAS las secciones. Antes había
+            // spacedBy(8.dp) aquí + Spacer(16-20.dp) manuales dentro de varios
+            // items, lo que producía gaps de tamaño distinto entre secciones
+            // sin ningún motivo visual. Ahora el ritmo es consistente.
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            userScrollEnabled = !isLoading
+        ){
+            // Card de información de la instalación
+            instalacionData?.let { proceso -> item { CardProceso(proceso)} }
 
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            SectionTitle(icon = R.drawable.ic_file, if (!isFormValid) "Archivos multimedia *" else "Archivos multimedia")
-
-                            // Media row
-                            LazyRow(
-                                modifier = Modifier.height(120.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                item {
-                                    CardWithBottomSheet(id, viewModel, context, isCompressing,
-                                        selectedImages?.isEmpty() == true
-                                    )
-                                }
-                                selectedImages?.let {
-                                    items(it) { uri ->
-                                        if (uri.link.contains("mp4")) {
-                                            VideoPreview(uri, context,
-                                                onPreview = {
-                                                    selectedPreviewFotoInsta.value = uri
-                                                },
-                                                onRemove = {
-                                                    viewModel.removeMedia(uri)
-                                                })
-                                        } else {
-                                            ImagePreview(uri,
-                                                onPreview = {
-                                                    selectedPreviewFotoInsta.value = uri
-                                                },
-                                                onRemove = {
-                                                    viewModel.removeMedia(uri)
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-
-                            }
-
-                            // Info section
-                            if (selectedImages?.isEmpty() == true) {
-                                Spacer(Modifier.height(16.dp))
-                                Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (!isFormValid)
-                                            MaterialTheme.colorScheme.errorContainer
-                                        else
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                    ),
-                                    border = if (!isFormValid) BorderStroke(1.dp, MaterialTheme.colorScheme.error) else null
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(if (!isFormValid) R.drawable.ic_octagon_alert else R.drawable.ic_info),
-                                            contentDescription = null,
-                                            tint = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(Modifier.width(12.dp))
-                                        Text(
-                                            text = if (!isFormValid)
-                                                "Es obligatorio agregar al menos un archivo"
-                                            else
-                                                "Agrega fotos o videos tocando el botón +",
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                color = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                fontWeight = if (!isFormValid) FontWeight.Medium else FontWeight.Normal
-                                            )
-                                        )
-                                    }
-                                }
-                            } else {
-                                Spacer(Modifier.height(16.dp))
-                                Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(Modifier.width(12.dp))
-                                        Text(
-                                            "${selectedImages?.size} archivo${if (selectedImages?.size != 1) "s" else ""} seleccionado${if (selectedImages?.size != 1) "s" else ""}",
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                color = MaterialTheme.colorScheme.primary,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (!isFormValid) {
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    text = "Debe agregar al menos una foto o video",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = MaterialTheme.colorScheme.error,
-                                        fontWeight = FontWeight.Medium
-                                    ),
-                                    modifier = Modifier.padding(start = 4.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-        item{
-            Spacer(Modifier.height(16.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            TextArea(
-                                value = observacion.value,
-                                onValueChange = { observacion.value = it },
-                                label = "Observacion",
-                                placeholder = "",
-                                required = true
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(20.dp))
-                }
-        articulosData?.let { articulos ->
+            // ── Resumen de progreso ──────────────────────────────────────
+            // Antes el único feedback sobre por qué el botón final estaba
+            // deshabilitado era el texto "Campos vacíos" en el propio botón,
+            // hasta que el usuario llegaba al final del formulario. Este card
+            // se ve de entrada y dice exactamente qué falta.
             item {
-                Spacer(Modifier.height(16.dp))
+                ProgresoCard(
+                    hasMedia = hasMedia,
+                    observacionValid = observacionValid
+                )
+            }
+
+            item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        SectionTitle(icon = R.drawable.ic_file, if (!isFormValid) "Archivos multimedia *" else "Archivos multimedia")
+
+                        // Media row
+                        LazyRow(
+                            modifier = Modifier.height(120.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                CardWithBottomSheet(id, viewModel, context, isCompressing,
+                                    selectedImages?.isEmpty() == true
+                                )
+                            }
+                            selectedImages?.let {
+                                items(it) { uri ->
+                                    if (uri.link.contains("mp4")) {
+                                        VideoPreview(uri, context,
+                                            onPreview = {
+                                                selectedPreviewFotoInsta.value = uri
+                                            },
+                                            onRemove = {
+                                                viewModel.removeMedia(uri)
+                                            })
+                                    } else {
+                                        ImagePreview(uri,
+                                            onPreview = {
+                                                selectedPreviewFotoInsta.value = uri
+                                            },
+                                            onRemove = {
+                                                viewModel.removeMedia(uri)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                        }
+
+                        // Upload status loader
+                        if (isUploadingFile) {
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "Subiendo archivo al servidor...",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        )
+                                    }
+                                    LinearProgressIndicator(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Info section
+                        if (selectedImages?.isEmpty() == true) {
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (!isFormValid)
+                                        MaterialTheme.colorScheme.errorContainer
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                border = if (!isFormValid) BorderStroke(1.dp, MaterialTheme.colorScheme.error) else null
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(if (!isFormValid) R.drawable.ic_octagon_alert else R.drawable.ic_info),
+                                        contentDescription = null,
+                                        tint = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(
+                                        text = if (!isFormValid)
+                                            "Es obligatorio agregar al menos un archivo"
+                                        else
+                                            "Agrega fotos o videos tocando el botón +",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = if (!isFormValid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = if (!isFormValid) FontWeight.Medium else FontWeight.Normal
+                                        )
+                                    )
+                                }
+                            }
+                        } else {
+                            Card(
+                                modifier = Modifier.clickable { showGallery.value = true },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(
+                                        "${selectedImages?.size} archivo${if (selectedImages?.size != 1) "s" else ""} seleccionado${if (selectedImages?.size != 1) "s" else ""}",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = "Ver todos",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item{
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        Text(
-                            text = "Artículos",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
+                        TextArea(
+                            value = observacion.value,
+                            onValueChange = { observacion.value = it },
+                            label = "Observacion",
+                            placeholder = "",
+                            required = true
                         )
+                    }
+                }
+            }
 
-                        articulos.forEach { articulo ->
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = articulo.nombre,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
+            // Por el momento no se solicita material al finalizar instalación
+            /*
+            articulosData?.let { articulos ->
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.background
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "Artículos",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold
                                 )
+                            )
 
-                                NumberField (
-                                    number = articulo.cantidad,
-                                    label = "Cantidad",
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = true,
-                                    showButtons = true,
-                                    minValue = 0,
-                                    maxValue = Int.MAX_VALUE,
-                                    required = false,
-                                    onChange = { nuevaCantidad ->
-                                        viewModel.updateArticuloCantidad(articulo.id, nuevaCantidad)
+                            articulos.forEach { articulo ->
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = articulo.nombre,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    )
+
+                                    NumberField (
+                                        number = articulo.cantidad,
+                                        label = "Cantidad",
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = true,
+                                        showButtons = true,
+                                        minValue = 0,
+                                        maxValue = Int.MAX_VALUE,
+                                        required = false,
+                                        onChange = { nuevaCantidad ->
+                                            viewModel.updateArticuloCantidad(articulo.id, nuevaCantidad)
+                                        }
+                                    )
+
+                                    if (articulo != articulos.last()) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(vertical = 8.dp),
+                                            color = MaterialTheme.colorScheme.outlineVariant
+                                        )
                                     }
-                                )
-
-                                if (articulo != articulos.last()) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant
-                                    )
                                 }
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+            }
+            */
+
+            item {
+                CustomButton(
+                    isLoading,
+                    disabled = !isFormValid,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    title = "Continuar y Firmar",
+                    chargeTitle = "Procesando...",
+                    disabledTitle = disabledReason,
+                ) {
+                    showSignatureDialog.value = true
+                }
             }
         }
-        item {
-            CustomButton(
-                isLoading,
-                disabled = !isFormValid,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                title = "Subir Datos",
-                chargeTitle = "Subiendo...",
-                disabledTitle = "Campos vacíos",
-                ) {
-                showSignatureDialog.value = true
-            }
-            Spacer(Modifier.height(16.dp))
+
+        BlockingLoadingOverlay(
+            visible = isLoading,
+            title = "Finalizando instalación...",
+            subtitle = "Subiendo datos. No cierres la app ni salgas de esta pantalla"
+        )
+    }
+
+    selectedImages?.let { images ->
+        if (showGallery.value && images.isNotEmpty()) {
+            MediaGalleryDialogFotoInsta(
+                media = images,
+                context = context,
+                onClose = { showGallery.value = false }
+            )
         }
     }
 
     successMessage?.let {
+        if(it.id == "finish") {
+            ModernDialog(
+                type = DialogType.SUCCESS,
+                message = it.message,
+                title = "¡Éxito!",
+                onCancel = {
+                    viewModel.clearMessages()
+                    navigateToHome()
+                },
+                onSuccess = {
+                    viewModel.clearMessages()
+                    navigateToHome()
+                },
+                cancelText = "Cerrar",
+                successText = "Continuar"
+            )
+        }
+    }
+
+    errorMessage?.let {
         ModernDialog(
-            type = DialogType.SUCCESS,
-            message = it,
-            title = "¡Éxito!",
+            type = DialogType.ERROR,
+            message = it.message,
+            title = "Error",
             onCancel = {
-                viewModel.clearMessages() // Limpiar mensaje
-                navigateToUp()
+                viewModel.clearMessages()
             },
             onSuccess = {
                 viewModel.clearMessages()
-                navigateToUp()
             },
             cancelText = "Cerrar",
-            successText = "Continuar"
+            successText = "Entendido"
         )
+    }
+
+    warningMessage?.let {
+        ModernDialog(
+            type = DialogType.WARNING,
+            message = it.message,
+            title = "Advertencia",
+            onCancel = {
+                viewModel.clearMessages()
+            },
+            onSuccess = {
+                viewModel.clearMessages()
+            },
+            cancelText = "Cerrar",
+            successText = "Entendido"
+        )
+    }
+}
+
+/**
+ * Card de resumen: muestra de un vistazo qué requisitos del formulario
+ * están completos y cuáles faltan, ANTES de que el usuario llegue al botón
+ * final. Cada fila usa el mismo patrón visual (check verde = listo, círculo
+ * vacío = pendiente) para que sea fácil de escanear.
+ */
+@Composable
+private fun ProgresoCard(
+    hasMedia: Boolean,
+    observacionValid: Boolean
+) {
+    val items = listOf(
+        Triple("Evidencia fotográfica", hasMedia, R.drawable.ic_file),
+        Triple("Observación", observacionValid, R.drawable.ic_info)
+    )
+    val completados = items.count { it.second }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Antes de continuar",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (completados == items.size)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = "$completados/${items.size}",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = if (completados == items.size)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+            }
+
+            items.forEach { (label, done, _) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (done) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Completo",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .border(
+                                    width = 1.5.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = if (done)
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (done) FontWeight.Medium else FontWeight.Normal
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Convierte un string hex ("#RRGGBB", "RRGGBB", "#AARRGGBB") a Color de
+ * Compose de forma segura. Si viene null, vacío, o mal formado, devuelve
+ * `default` en vez de crashear la app (antes, un valor inesperado en
+ * `estado.color` podía tumbar toda la pantalla).
+ */
+private fun parseHexColorOrDefault(hex: String?, default: Color): Color {
+    if (hex.isNullOrBlank()) return default
+    return try {
+        val normalizado = if (hex.startsWith("#")) hex else "#$hex"
+        Color(android.graphics.Color.parseColor(normalizado))
+    } catch (e: IllegalArgumentException) {
+        default
     }
 }
 
@@ -411,6 +681,7 @@ private fun CardWithBottomSheet(
     val sheetState = rememberModalBottomSheetState()
     val showBottomSheet = remember { mutableStateOf(false) }
     val hasPermissions = remember { mutableStateOf(false) }
+    val compressionScope = rememberCoroutineScope()
 
     val permissions = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
@@ -500,45 +771,46 @@ private fun CardWithBottomSheet(
             }
         }
     }
-        if (showBottomSheet.value) {
-            ModalBottomSheet(
-                onDismissRequest = { showBottomSheet.value = false },
-                sheetState = sheetState,
-                containerColor = MaterialTheme.colorScheme.background,
+    if (showBottomSheet.value) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet.value = false },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.background,
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                // Antes: color = Color.White (fijo), ignoraba el tema oscuro.
+                color = MaterialTheme.colorScheme.background
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color =  Color.White
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                    // Header
+                    SectionTitle(icon = null, title = "Añadir Evidencia")
+
+
+                    // Action buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Header
-                        SectionTitle(icon = null, title = "Añadir Evidencia")
-
-
-                        // Action buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                CameraScreen(id, viewModel, showBottomSheet, context, hasPermissions.value, isCompressing)
-                            }
-                            Box(modifier = Modifier.weight(1f)) {
-                                VideoCameraScreen(id, viewModel, showBottomSheet, context, hasPermissions.value, isCompressing)
-                            }
+                        Box(modifier = Modifier.weight(1f)) {
+                            CameraScreen(id, viewModel, showBottomSheet, context, hasPermissions.value, isCompressing, compressionScope)
                         }
-                        MediaSelectorView(id, viewModel, context, hasPermissions.value, isCompressing)
-
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            VideoCameraScreen(id, viewModel, showBottomSheet, context, hasPermissions.value, isCompressing, compressionScope)
+                        }
                     }
+                    MediaSelectorView(id, viewModel, context, hasPermissions.value, isCompressing, compressionScope)
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -549,23 +821,23 @@ private fun CameraScreen(
     showBottomSheet: MutableState<Boolean>,
     context: Context,
     enabled: Boolean,
-    isCompressing: MutableState<Boolean>
+    isCompressing: MutableState<Boolean>,
+    compressionScope: CoroutineScope
 ) {
-    val photoFile = remember { File(context.cacheDir, "photo_${System.currentTimeMillis()}.jpg") }
-    val photoUriProvider = FileProvider.getUriForFile(context, "${context.packageName}.provider", photoFile)
-
-    val coroutineScope = rememberCoroutineScope ()
+    var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
-            if (success) {
+            val capturedUri = pendingPhotoUri
+            if (success && capturedUri != null) {
                 isCompressing.value = true
-                coroutineScope.launch {
+                showBottomSheet.value = false
+                compressionScope.launch {
                     try {
                         val compressedFile = ImageOperations().uriToFile(
                             context = context,
-                            uri = photoUriProvider,
+                            uri = capturedUri,
                             currentDate = LocalDateTime.now()
                         )
                         compressedFile?.let { file ->
@@ -576,21 +848,28 @@ private fun CameraScreen(
                             )
                             viewModel.createEvidencia(id, compressedUri, context)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e("StyledOpenCameraScreen", "Error comprimiendo imagen: ${e.message}")
-                        viewModel.createEvidencia(id, photoUriProvider, context)
-                    }finally {
+                        Toast.makeText(
+                            context,
+                            "No se pudo comprimir la foto. Intenta de nuevo.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } finally {
                         isCompressing.value = false
                     }
                 }
-                showBottomSheet.value = false
             }
         }
     )
 
     Card(
         onClick = {
-            launcher.launch(photoUriProvider)
+            val captureUri = ImageOperations.newCaptureImageUri(context)
+            pendingPhotoUri = captureUri
+            launcher.launch(captureUri)
         },
         enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
@@ -644,18 +923,19 @@ private fun VideoCameraScreen(
     showBottomSheet: MutableState<Boolean>,
     context: Context,
     enabled: Boolean,
-    isCompressing: MutableState<Boolean>
+    isCompressing: MutableState<Boolean>,
+    compressionScope: CoroutineScope
 ) {
     val videoFile = remember { File(context.cacheDir, "video_${System.currentTimeMillis()}.mp4") }
     val videoUriProvider = FileProvider.getUriForFile(context, "${context.packageName}.provider", videoFile)
-    val coroutineScope = rememberCoroutineScope ()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CaptureVideo(),
         onResult = { success ->
             if (success) {
                 isCompressing.value = true
-                coroutineScope.launch {
+                showBottomSheet.value = false
+                compressionScope.launch {
                     try {
                         val compressedFile = ImageOperations().uriToFile(
                             context = context,
@@ -670,12 +950,13 @@ private fun VideoCameraScreen(
                             )
                             viewModel.createEvidencia(id, compressedUri, context)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         e.message?.let { Log.e("VideoCameraScreen", it) }
                         viewModel.createEvidencia(id, videoUriProvider, context)
-                    }finally {
+                    } finally {
                         isCompressing.value = false
-                        showBottomSheet.value = false
                     }
                 }
             }
@@ -736,9 +1017,9 @@ private fun MediaSelectorView(
     viewModel: ProcesoViewModel,
     context: Context,
     enabled: Boolean,
-    isCompressing: MutableState<Boolean>
+    isCompressing: MutableState<Boolean>,
+    compressionScope: CoroutineScope
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val maxSelectionCount = 10
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
@@ -747,7 +1028,7 @@ private fun MediaSelectorView(
             if (uris.isNotEmpty()) {
                 // Iniciar proceso de compresión
                 isCompressing.value=true
-                coroutineScope.launch {
+                compressionScope.launch {
                     try {
                         val currentDate = LocalDateTime.now()
 
@@ -965,122 +1246,209 @@ private fun ImagePreview(image: FotoInsta, onPreview: () -> Unit, onRemove: () -
     }
 }
 
-// Composable para el diálogo de firma
+@SuppressLint("UseKtx")
+@OptIn(ExperimentalLayoutApi::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun SignatureDialog(
-    onConfirm: (Bitmap) -> Unit,
-    onCancel: () -> Unit
-) {
-    var signatureBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var signaturePadView by remember { mutableStateOf<SignaturePad?>(null) }
-    var isValid by remember { mutableStateOf(true) }
-
-    Dialog(
-        onDismissRequest = onCancel,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+private fun CardProceso ( proceso: Proceso) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 2.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.background
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Card(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.background
-            )
+                .padding(20.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
+
+            // ── Header: ID + Estado ──────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Firma del Comprobante",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Área de firma usando AndroidView
-                AndroidView(
-                    factory = { context ->
-                        SignaturePad(context, null).apply {
-                            setOnSignedListener(object : SignaturePad.OnSignedListener {
-
-                                override fun onStartSigning() {
-                                    isValid = false
-                                }
-
-                                override fun onSigned() {
-                                    signatureBitmap = signatureBitmap
-                                }
-
-                                override fun onClear() {
-                                    signatureBitmap = null
-                                    isValid = true
-                                }
-                            })
-                            setMinWidth(2f)
-                            setMaxWidth(4f)
-                            setVelocityFilterWeight(0.9f)
-                            signaturePadView = this
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(450.dp)
-                        .background(Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
-                        .border(1.dp, Color.Gray, RoundedCornerShape(12.dp))
-                        .clip(RoundedCornerShape(12.dp))
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Botón para limpiar firma
-                TextButton(
-                    onClick = {
-                        signaturePadView?.clear()
-                        signatureBitmap = null
-                    },
-                    modifier = Modifier.align(Alignment.End)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = colorResource(id = R.color.info).copy(alpha = 0.1f)
                 ) {
-                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Limpiar")
+                    Text(
+                        text = "ID: ${proceso.id?.toString() ?: "N/A"}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = colorResource(id = R.color.info),
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Botones de acción
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancelar")
-                    }
-
-                    Log.d("Draw", "firmando.... ${signaturePadView?.isEmpty}")
-                    CustomButton(
-                        isLoading = false,
-                        disabled = isValid,
-                        title = "Confirmar",
-                        chargeTitle = "Procesando...",
-                        disabledTitle = "Firma requerida",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            signaturePadView?.let { pad ->
-                                if (!pad.isEmpty) {
-                                    val bitmap = pad.signatureBitmap
-                                    onConfirm(bitmap)
-                                }
-                            }
-                        }
+                // Antes: Color(android.graphics.Color.parseColor(proceso.estado?.color))
+                // sin try/catch -> crash si `color` viene null, vacío, o mal
+                // formado. Ahora usa un fallback seguro.
+                val statusColor = parseHexColorOrDefault(
+                    hex = proceso.estado?.color,
+                    default = MaterialTheme.colorScheme.tertiary
+                )
+                Surface(shape = RoundedCornerShape(12.dp), color = statusColor.copy(alpha = 0.1f)) {
+                    Text(
+                        text = estadoLabel(proceso.estado),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
+                }
+            }
+
+            // ── Identidad: Nombre + Identificación ───────────────────────
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = proceso.nombre?.takeIf { it.isNotBlank() } ?: "Nombre no disponible",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                proceso.identificacion?.takeIf { it.isNotBlank() }?.let { id ->
+                    Text(
+                        text = "Identificación: $id",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+            }
+
+
+            // ── Contacto: Teléfonos + Correo ─────────────────────────────
+            if (!proceso.telefonos.isNullOrBlank()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_phone, title = "Contacto")
+                val telefonos = try {
+                    separarNumerosTelefonicos(proceso.telefonos)
+                } catch (e: Exception) {
+                    Log.e("ProcesoView", "Error al separar los números de teléfono", e)
+                    emptyList()
+                }
+                if (telefonos.isNotEmpty()) {
+                    LazyRow ( horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(telefonos) { numero -> PhoneCard(numero) }
+                    }
+                } else {
+                    // Antes: si el parseo fallaba o devolvía vacío, el número
+                    // se perdía silenciosamente aunque sí existiera el dato.
+                    InfoRow(icon = null, text = proceso.telefonos)
+                }
+            }
+
+            // ── Ubicación ─────────────────────────────────────────────────
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionTitle(icon = R.drawable.ic_map_pin, title = "Ubicación")
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Column (
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    proceso.direccion?.let { direccion ->
+                        val texto = if (!proceso.condominio.isNullOrBlank()) {
+                            "$direccion, ${proceso.condominio}"
+                        } else {
+                            direccion
+                        }
+                        InfoRow(icon = null, text = texto)
+                    }
+                    proceso.barrio?.descripcion?.let {
+                        InfoRow(icon = null, text = "Barrio: $it")
+                    }
+                }
+            }
+
+            // ── Plan ──────────────────────────────────────────────────────
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionTitle(icon = R.drawable.ic_notebook_text, title = "Plan")
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Row (
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    proceso.plan?.id?.let {
+                        Text(
+                            text = "$it MB",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                    proceso.tipo_plan?.descripcion?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                    proceso.tipo_servicio?.descripcion?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
+            }
+
+
+            // ── Información Adicional: fechas + responsable cuando aplica ──
+            val fechasInfo = listOfNotNull(
+                proceso.create_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Creado", it, proceso.create_by) },
+                proceso.update_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Actualizado", it, proceso.update_by) },
+                proceso.files_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Recepcionado", it, null) },
+                proceso.installation_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Agendado", it, null) },
+                proceso.init_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Inicio", it, null) },
+                proceso.end_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Finalización", it, null) }
+            )
+            if (fechasInfo.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_info, title = "Información Adicional")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    fechasInfo.forEach { info ->
+                        InfoDateChip(info = info, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+
+            val asignados = listOfNotNull(
+                proceso.operator_by?.let { "Operador" to it },
+                proceso.assistant_by?.let { "Asistente" to it },
+            )
+            if (asignados.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_circle_user_round, title = "Asignación")
+                asignados.forEach { (label, usuario) ->
+                    val nombre = listOfNotNull(usuario.nombre_1, usuario.apellido_1)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                        .ifBlank { "Usuario" }
+                    InfoRow(icon = null, text = "$label: $nombre")
                 }
             }
         }

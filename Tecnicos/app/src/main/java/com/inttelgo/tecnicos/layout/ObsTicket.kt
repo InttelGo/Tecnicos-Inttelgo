@@ -1,6 +1,7 @@
 package com.inttelgo.tecnicos.layout
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -34,9 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.inttelgo.tecnicos.components.AlertCard
+import com.inttelgo.tecnicos.components.BlockingLoadingOverlay
 import com.inttelgo.tecnicos.components.CustomButton
 import com.inttelgo.tecnicos.components.LazyImages
 import com.inttelgo.tecnicos.components.ModernDialog
+import com.inttelgo.tecnicos.components.SignatureDialog
 import com.inttelgo.tecnicos.components.TextArea
 import com.inttelgo.tecnicos.components.WarningCard
 import com.inttelgo.tecnicos.logic.Model.DialogType
@@ -64,11 +67,49 @@ fun ObsTicket(
     val successMessage by viewModel.successMessage.collectAsState()
 
     val isFormValid = observacion.value.trim().isNotEmpty() && selectedImages.value.isNotEmpty()
+    val showSignatureDialog = remember { mutableStateOf(false) }
+    val signatureBitmap = remember { mutableStateOf<Bitmap?>(null) }
+
+    if (showSignatureDialog.value && !isLoading) {
+        SignatureDialog(
+            onConfirm = { signature ->
+                signatureBitmap.value = signature.bitmap
+                showSignatureDialog.value = false
+                if (type.contains("finalizar")) {
+                    viewModel.finishObs(
+                        id = id,
+                        selectedImages = selectedImages,
+                        observacion = observacion,
+                        signatureBitmap = signature.bitmap,
+                        context = context,
+                        esEncargado = signature.esEncargado,
+                        nombreEncargado = signature.nombreEncargado,
+                        identificacionEncargado = signature.identificacionEncargado
+                    )
+                } else {
+                    viewModel.createObs(
+                        id = id,
+                        selectedImages = selectedImages,
+                        observacion = observacion,
+                        signatureBitmap = signature.bitmap,
+                        context = context,
+                        esEncargado = signature.esEncargado,
+                        nombreEncargado = signature.nombreEncargado,
+                        identificacionEncargado = signature.identificacionEncargado
+                    )
+                }
+            },
+            onCancel = {
+                signatureBitmap.value = null
+                showSignatureDialog.value = false
+            }
+        )
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(vertical = 16.dp),
-            userScrollEnabled = !isUploadingFile
+            userScrollEnabled = !isLoading && !isUploadingFile
         ) {
             item {
                 LazyImages(selectedImages, selectedPreviewUri, context, isCompressing, true)
@@ -103,7 +144,7 @@ fun ObsTicket(
             item {
                 CustomButton(
                     isLoading,
-                    disabled = !isFormValid,
+                    disabled = !isFormValid || isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -111,74 +152,34 @@ fun ObsTicket(
                     chargeTitle = "Subiendo...",
                     disabledTitle = "Campos vacíos",
                 ) {
-                    if(type.contains("finalizar")){
-                        viewModel.finishObs(id, selectedImages, observacion, context)
-                    }else{
-                        viewModel.createObs(id, selectedImages, observacion, context)
-                    }
-                }
-            }
-        }
-
-        // Overlay de carga cuando se está subiendo
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(enabled = false) { },
-                contentAlignment = Alignment.Center
-            ) {
-                Card(
-                    modifier = Modifier.padding(32.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(48.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Procesando solicitud...",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                        Text(
-                            text = "Por favor espera",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    showSignatureDialog.value = true
                 }
             }
         }
     }
 
+    BlockingLoadingOverlay(
+        visible = isLoading,
+        title = if (type.contains("finalizar")) "Finalizando ticket..." else "Enviando observación...",
+        subtitle = "Subiendo datos. No cierres la app ni salgas de esta pantalla"
+    )
+
     // Diálogo de éxito
-    successMessage?.let {
+    successMessage?.let { message ->
+        val goBack = {
+            viewModel.clearMessages()
+            if (type.contains("finalizar")) {
+                navigateToHome()
+            } else {
+                navigateToUp()
+            }
+        }
         ModernDialog(
             type = DialogType.SUCCESS,
-            message = it,
+            message = message,
             title = "¡Éxito!",
-            onCancel = {
-                viewModel.clearMessages()
-            },
-            onSuccess = {
-                viewModel.clearMessages()
-                if(type.contains("finalizar")){
-                    navigateToHome()
-                }else{
-                    navigateToUp()
-                }
-            },
+            onCancel = goBack,
+            onSuccess = goBack,
             cancelText = "Cerrar",
             successText = "Continuar"
         )

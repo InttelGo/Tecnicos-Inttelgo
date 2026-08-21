@@ -3,10 +3,8 @@ package com.inttelgo.tecnicos.layout
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -72,10 +71,13 @@ import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.Sorting
 import com.inttelgo.tecnicos.logic.Model.Ticket
+import com.inttelgo.tecnicos.logic.Model.assignedToUserFilter
+import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.process.OtherOperarions
 import com.inttelgo.tecnicos.logic.process.homeProcess
 import com.inttelgo.tecnicos.viewmodel.HomeViewModel
 import com.inttelgo.tecnicos.viewmodel.SoporteViewModel
+import androidx.compose.ui.graphics.Color
 
 @RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("DiscouragedApi")
@@ -86,8 +88,14 @@ fun Soporte(
     context: Context
 ) {
     val viewModel: SoporteViewModel = remember { SoporteViewModel() }
-    val filters = remember { mutableStateListOf(Filter("id_ticket", "contains", ""), Filter("id_estado_ticket", "equals", "1", logic = "AND")) }
-    val sorting = remember { Sorting("fecha_hora", true) }
+    val userPreferences = remember { UserPreferences(context) }
+    val filters = remember {
+        mutableStateListOf(
+            Filter(column = "id_status", operator = "in", value = listOf("6", "7")),
+            Filter(column = "id", operator = "contains", value = "", logic = "AND")
+        )
+    }
+    val sorting = remember { Sorting("reserved_at", true) }
     val prioritySelected = remember { mutableIntStateOf(0) }
     val tickets by viewModel.ticketsData.collectAsState()
     val barrios by viewModelH.barrios.collectAsState()
@@ -99,22 +107,51 @@ fun Soporte(
 
     // Content Section
     LaunchedEffect(prioritySelected.intValue, search.value) {
-        if(hasInternetConnection.value){
-            val updatedFilters = filters.map { filter ->
-                if (filter.column == "id_ticket") {
-                    filter.copy(
-                        value = search.value,
-                        operator = if (search.value.length > 3) "equals" else "contains"
+        if (hasInternetConnection.value) {
+            val userId = userPreferences.getUser()?.id
+            if (userId == null) return@LaunchedEffect
+
+            val updatedFilters = mutableListOf<Filter>()
+
+            // 1) Estados abiertos (siempre aplica, también para asistente)
+            updatedFilters.add(
+                Filter(
+                    column = "id_status",
+                    operator = "in",
+                    value = listOf("6", "7")
+                )
+            )
+
+            // 2) Asignado como operador O asistente (grupo OR)
+            updatedFilters.add(assignedToUserFilter(userId, logic="AND"))
+
+            // 3) Búsqueda por id
+            updatedFilters.add(
+                Filter(
+                    column = "id",
+                    operator = if (search.value.length > 3) "equals" else "contains",
+                    value = search.value,
+                    logic = "AND"
+                )
+            )
+
+            // 4) Prioridad (solo si no es "Todos")
+            if (prioritySelected.intValue != 0) {
+                updatedFilters.add(
+                    Filter(
+                        column = "prioridad",
+                        operator = "equals",
+                        value = prioritySelected.intValue.toString(),
+                        logic = "AND"
                     )
-                } else {
-                    filter
-                }
+                )
             }
+
             filters.clear()
             filters.addAll(updatedFilters)
 
             viewModel.resetPagination()
-            viewModel.consultMoreTickets(filters= filters, sorting= sorting )
+            viewModel.consultMoreTickets(filters = filters, sorting = sorting)
         }
     }
 
@@ -166,7 +203,7 @@ fun Soporte(
                                 decorationBox = { innerTextField ->
                                     if (search.value.isEmpty()) {
                                         Text(
-                                            text = "Buscar #ticket...",
+                                            text = "Buscar #...",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -361,17 +398,17 @@ private fun TicketCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Ticket Type Icon
-                TicketTypeSection(ticket = ticket, context = context)
+                TypeSection(ticket = ticket, context = context)
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // ── Cuenta ───────────────────────────────────────────────────
-                    ticket.cuenta?.let { cuenta ->
-                        CuentaInfoSection(cuenta = cuenta)
-                        LocationSection(direccion = cuenta.direccion)
-                        InfoRow(icon = R.drawable.ic_map_pin, text = cuenta.condominio)
+                    ticket.service?.let { service ->
+                        CuentaInfoSection(cuenta = service)
+                        LocationSection(direccion = service.direccion)
+                        InfoRow(icon = R.drawable.ic_map_pin, text = service.condominio)
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Surface(
@@ -380,10 +417,10 @@ private fun TicketCard(
                     ) {
                         Text(
                             text = buildString {
-                                ticket.cuenta?.plan?.let {append("${it} MB " )}
-                                ticket.cuenta?.tipo_plan?.let{ append(it.descripcion) }
+                                ticket.service?.plan?.let {append("${it} MB " )}
+                                ticket.service?.tipo_plan?.let{ append(it.descripcion) }
                                 append(" ")
-                                append(ticket.cuenta?.tipo_servicio?.descripcion)
+                                append(ticket.service?.tipo_servicio?.descripcion)
                             },
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
@@ -401,17 +438,17 @@ private fun TicketCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ticket.fecha_hora?.let {
-                    DateChip(label = "Creación", date = OtherOperarions().formatFechaBaseDatos(it), modifier = Modifier.weight(1f))
-                }
+                DateChip(
+                    label = "Reservación",
+                    date = OtherOperarions().formatFechaBaseDatos(ticket.reserved_at),
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             // ── Observaciones ────────────────────────────────────────────
-            if (ticket.observacion_ticket.isNotBlank()) {
-                SectionTitle(icon = R.drawable.ic_info, title = "Observación")
-                ObservationBox(text = ticket.observacion_ticket)
-            }
+            SectionTitle(icon = R.drawable.ic_info, title = "Observación")
+            ObservationBox(text = ticket.observation)
 
             // Action Button
             Button(
@@ -428,7 +465,7 @@ private fun TicketCard(
                 )
             ) {
                 Text(
-                    text = "Ver detalles",
+                    text = "Ver más",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -441,48 +478,53 @@ private fun TicketCard(
 
 @SuppressLint("DiscouragedApi")
 @Composable
-private fun TicketTypeSection(ticket: Ticket, context: Context) {
-    val imageResId = remember(ticket.tipo?.nombre_icono) {
-        context.resources.getIdentifier(ticket.tipo?.nombre_icono, "drawable", context.packageName)
-    }
-
+private fun TypeSection(ticket: Ticket, context: Context) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.size(100.dp)
+        modifier = Modifier.width(100.dp).height(150.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(12.dp)
         ) {
-            if (imageResId != 0) {
-                Image(
-                    painter = painterResource(imageResId),
-                    contentDescription = "Tipo de ticket",
-                    modifier = Modifier.size(40.dp)
-                )
-                Spacer(Modifier.height(8.dp))
-                ticket.tipo?.let {
-                    Text(
-                        text = it.descripcion,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 12.sp
-                        ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+            ticket.type?.let { type ->
+                val iconResId = remember(type.nombre_icono) {
+                    context.resources.getIdentifier(
+                        type.nombre_icono,
+                        "drawable",
+                        context.packageName
                     )
                 }
-            } else {
+
+                if (iconResId != 0) {
+                    Icon(
+                        painter = painterResource(iconResId),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Red
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Red
+                    )
+                }
+
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "No disponible",
+                    text = type.descripcion,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 12.sp
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

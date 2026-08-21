@@ -3,6 +3,7 @@ package com.inttelgo.tecnicos.ui.view
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,15 +59,12 @@ import com.inttelgo.tecnicos.components.EmptyHistoryCard
 import com.inttelgo.tecnicos.components.EmptyStateCard
 import com.inttelgo.tecnicos.components.HistoryToggle
 import com.inttelgo.tecnicos.components.InfoRow
-import com.inttelgo.tecnicos.components.LocationSection
 import com.inttelgo.tecnicos.components.MediaPreview
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.ModernTopAppBar
-import com.inttelgo.tecnicos.components.ObservationBox
+import com.inttelgo.tecnicos.components.ObservationHistoryCard
 import com.inttelgo.tecnicos.components.PhoneCard
 import com.inttelgo.tecnicos.components.SectionTitle
-import com.inttelgo.tecnicos.components.TypeSection
-import com.inttelgo.tecnicos.components.formatDate
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.Filter
@@ -73,7 +72,6 @@ import com.inttelgo.tecnicos.logic.Model.ObsTicket
 import com.inttelgo.tecnicos.logic.Model.Sorting
 import com.inttelgo.tecnicos.logic.Model.Ticket
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
-import com.inttelgo.tecnicos.ui.theme.Info
 import com.inttelgo.tecnicos.viewmodel.SoporteViewModel
 
 
@@ -88,7 +86,7 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
     val histories by viewModel.histories.collectAsState()
     val evidencias by viewModel.evidencias.collectAsState()
     val isLoading by viewModel.loading.collectAsState()
-    val isLoadingEvidencias = remember { mutableStateOf(false) }
+    val isLoadingEvidencias by viewModel.loadingEvidencias.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
@@ -96,8 +94,9 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
     val hasInternetConnection = rememberNetworkConnectivityState(context)
     val userPreferences = UserPreferences(context)
     val expanded = remember { mutableStateOf(false) }
-    val filters = remember { mutableStateListOf(Filter("id_obs_ticket", "contains", "")) }
-    val sorting = remember { Sorting("fecha", true) }
+    val filters = remember { mutableStateListOf(Filter("id", "contains", "")) }
+    // Ordenar historial por fecha de creación (más recientes primero)
+    val sorting = remember { Sorting("create_at", true) }
 
     if (hasInternetConnection.value) {
         LaunchedEffect(Unit) {
@@ -199,9 +198,8 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
                                     else -> {
                                         histories?.let { historyList ->
                                             items(historyList) { history ->
-                                                HistorySection(history, isLoadingEvidencias.value) {
-                                                    isLoadingEvidencias.value = true
-                                                    viewModel.consultEvidencias(history.id)
+                                                HistorySection(history, isLoadingEvidencias) {
+                                                    viewModel.consultEvidencias(idSuport, history.id)
                                                 }
                                             }
 
@@ -224,7 +222,7 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
             }
 
             // Overlay de carga de evidencias
-            if (isLoadingEvidencias.value) {
+            if (isLoadingEvidencias) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -263,7 +261,6 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
 
     // Diálogo de error
     errorMessage?.let {
-        isLoadingEvidencias.value = false
         ModernDialog(
             type = DialogType.ERROR,
             message = it,
@@ -279,13 +276,10 @@ fun SupportScreen(idSuport: String, context: Context, navigateToUploadImage: (id
         )
     }
 
-    // Preview de evidencias
+    // Preview de evidencias (incluye lista vacía → "Sin evidencias")
     evidencias?.let {
-        if(it.isNotEmpty()){
-            isLoadingEvidencias.value = false
-            MediaPreview(it) {
-                viewModel.clearEvidencias()
-            }
+        MediaPreview(it) {
+            viewModel.clearEvidencias()
         }
     }
 }
@@ -472,7 +466,8 @@ private fun TicketInfoCard(ticket: Ticket?) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         if (ticket == null) {
             Box(
@@ -495,8 +490,7 @@ private fun TicketInfoCard(ticket: Ticket?) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            // ── Header: ID, Prioridad y Estado ───────────────────────────
+            // ID + Estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -507,7 +501,7 @@ private fun TicketInfoCard(ticket: Ticket?) {
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
-                        text = "Ticket #${ticket.id}",
+                        text = "#${ticket.id}",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -515,107 +509,104 @@ private fun TicketInfoCard(ticket: Ticket?) {
                         )
                     )
                 }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ticket.estado?.let {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Text(
-                                text = it.descripcion ?: "Sin estado",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // ── Cliente ──────────────────────────────────────────────────
-            ticket.cliente?.let { c ->
-                SectionTitle(icon = R.drawable.ic_circle_user_round, title = "Cliente")
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Avatar iniciales
+                ticket.status?.let {
                     Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(48.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "${c.nombre1.firstOrNull() ?: ""}${c.apellido1.firstOrNull() ?: ""}",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                        }
-                    }
-
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = listOfNotNull(c.nombre1, c.nombre2, c.apellido1, c.apellido2)
-                                .filter { it.isNotBlank() }.joinToString(" "),
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            text = it.descripcion.orEmpty().ifBlank { "Sin estado" },
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                        InfoRow(icon = R.drawable.ic_circle_user_round, text = c.identificacion)
-                        InfoRow(icon = R.drawable.ic_mail, text = c.correo)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            PhoneCard(c.telefono1)
-                            c.telefono2?.let { PhoneCard(it) }
-                        }
                     }
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // ── Tipo ─────────────────────────────────────────────────────
-
-            SectionTitle(icon = R.drawable.ic_ethernet_port, title = "Tipo ticket")
-            ticket.tipo?.descripcion?.let{ TypeSection(descripcion = it) }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // ── Cuenta ───────────────────────────────────────────────────
-            ticket.cuenta?.let { cuenta ->
-                CuentaInfoSection(cuenta = cuenta)
-                LocationSection(direccion = cuenta.direccion)
-                InfoRow(icon = R.drawable.ic_map_pin, text = cuenta.condominio)
+            // Cliente
+            ticket.cliente?.let { c ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_circle_user_round, title = "Cliente")
+                Text(
+                    text = listOfNotNull(c.nombre1, c.nombre2, c.apellido1, c.apellido2)
+                        .filter { it.isNotBlank() }.joinToString(" ")
+                        .ifBlank { "Sin nombre" },
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+                c.correo.takeIf { it.isNotBlank() }?.let {
+                    InfoRow(icon = R.drawable.ic_mail, text = it)
+                }
+                val telefonos = listOfNotNull(
+                    c.telefono1.takeIf { it.isNotBlank() },
+                    c.telefono2?.takeIf { it.isNotBlank() }
+                )
+                if (telefonos.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(telefonos) { numero -> PhoneCard(numero) }
+                    }
+                }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // ── Fechas ───────────────────────────────────────────────────
-            SectionTitle(icon = R.drawable.ic_calendar_days, title = "Fechas")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                DateChip(label = "Creación", date = ticket.fecha_hora, modifier = Modifier.weight(1f))
+            // Tipo
+            ticket.type?.descripcion?.takeIf { it.isNotBlank() }?.let { tipo ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_ethernet_port, title = "Tipo")
+                InfoRow(icon = null, text = tipo)
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            // ── Observaciones ────────────────────────────────────────────
-            if (ticket.observacion_ticket.isNotBlank()) {
-                SectionTitle(icon = R.drawable.ic_info, title = "Observación")
-                ObservationBox(text = ticket.observacion_ticket)
+            // Servicio
+            ticket.service?.let { service ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_notebook_text, title = "Servicio")
+                CuentaInfoSection(cuenta = service)
+                val planText = buildString {
+                    service.plan?.let { append("$it MB ") }
+                    service.tipo_plan?.descripcion?.let { append(it) }
+                    service.tipo_servicio?.descripcion?.let {
+                        if (isNotEmpty()) append(" · ")
+                        append(it)
+                    }
+                }
+                if (planText.isNotBlank()) {
+                    InfoRow(icon = null, text = planText)
+                }
+            }
+
+            // Fechas
+            val fechas = listOfNotNull(
+                ticket.reserved_at.takeIf { it.isNotBlank() }?.let { "Fecha realización" to it },
+            )
+            if (fechas.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_calendar_days, title = "Fechas")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(fechas) { (label, fecha) ->
+                        DateChip(label = label, date = fecha, modifier = Modifier)
+                    }
+                }
+            }
+
+            // Operador / Asistente
+            val asignados = listOfNotNull(
+                ticket.operator_by?.let { "Operador" to it },
+                ticket.assistant_by?.let { "Asistente" to it },
+            )
+            if (asignados.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_circle_user_round, title = "Asignación")
+                asignados.forEach { (label, usuario) ->
+                    val nombre = listOfNotNull(usuario.nombre_1, usuario.apellido_1)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                        .ifBlank { "Usuario" }
+                    InfoRow(icon = null, text = "$label: $nombre")
+                }
             }
         }
     }
@@ -628,124 +619,18 @@ private fun HistorySection(
     isLoadingEvidencias: Boolean,
     onViewEvidence: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(60.dp)
-                ) {
-                    IconButton(
-                        onClick = onViewEvidence,
-                        modifier = Modifier.fillMaxSize(),
-                        enabled = !isLoadingEvidencias
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_eye),
-                            contentDescription = "Ver evidencia",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Evidencia",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Observación:",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = observacion.descripcion.takeIf { it.isNotBlank() }
-                                ?: "Sin observación registrada",
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = if (observacion.descripcion.isNotBlank())
-                                    MaterialTheme.colorScheme.onSurface
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontStyle = if (observacion.descripcion.isNotBlank())
-                                    FontStyle.Normal else FontStyle.Italic
-                            )
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Text(
-                        text = formatDate(observacion.fecha),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-
-                observacion.usuario?.let { usuario ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_circle_user_round),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier
-                                .size(14.dp)
-                                .wrapContentSize(Alignment.Center)
-                        )
-
-                        Text(
-                            text = buildString {
-                                append(usuario.nombre_1 +" "+usuario.apellido_1)
-                            }.takeIf { it.isNotBlank() } ?: "Usuario",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                }
-            }
-        }
+    val nombreUsuario = observacion.create_by?.let { usuario ->
+        listOfNotNull(usuario.nombre_1, usuario.apellido_1)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+            .ifBlank { null }
     }
+
+    ObservationHistoryCard(
+        descripcion = observacion.content,
+        fecha = observacion.create_at,
+        usuarioNombre = nombreUsuario,
+        isLoadingEvidencias = isLoadingEvidencias,
+        onViewEvidence = onViewEvidence
+    )
 }

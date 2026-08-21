@@ -257,21 +257,21 @@ private fun ProfileContent(
                     SectionTitle(title = "Nombre")
                     InfoRow(
                         icon = R.drawable.ic_circle_user_round, text = listOfNotNull(
-                            userProfile.name1,
-                            userProfile.name2,
-                            userProfile.lastname1,
-                            userProfile.lastname2
+                            userProfile.nombre_1,
+                            userProfile.nombre_2,
+                            userProfile.apellido_1,
+                            userProfile.apellido_2
                         ).joinToString(" ").ifBlank { " " }
                     )
                     SectionTitle(title = "Correo Personal")
                     InfoRow(
                         icon = R.drawable.ic_mail,
-                        text = userProfile.emailPersonal ?: "No disponible"
+                        text = userProfile.correo_personal ?: "No disponible"
                     )
                     SectionTitle(title = "Telefono")
                     InfoRow(
                         icon = R.drawable.ic_phone,
-                        text = userProfile.phone1 ?: "No disponible"
+                        text = userProfile.telefono_1 ?: "No disponible"
                     )
                     SectionTitle(title = "Rol")
                     InfoRow(icon = R.drawable.ic_info, text = userProfile.profile?.rol ?: "N/A")
@@ -321,7 +321,7 @@ private fun ProfileHeader(userProfile: UsuarioAuth?) {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Text(
-                        text = userProfile?.name1?.firstOrNull()?.uppercase() ?: "U",
+                        text = userProfile?.nombre_1?.firstOrNull()?.uppercase() ?: "U",
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -332,7 +332,7 @@ private fun ProfileHeader(userProfile: UsuarioAuth?) {
 
             // Nombre
             Text(
-                text = userProfile?.name1 ?: "Usuario",
+                text = userProfile?.nombre_1 ?: "Usuario",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary
@@ -342,7 +342,7 @@ private fun ProfileHeader(userProfile: UsuarioAuth?) {
 
             // Email
             Text(
-                text = userProfile?.emailPersonal ?: "",
+                text = userProfile?.correo_personal ?: "",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 ),
@@ -481,9 +481,9 @@ private fun EditProfileDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, email: String, phone: String) -> Unit
 ) {
-    val name = remember { mutableStateOf(userProfile?.name1 ?: "") }
-    val email = remember { mutableStateOf(userProfile?.emailPersonal ?: "") }
-    val phone = remember { mutableStateOf(userProfile?.phone1 ?: "") }
+    val name = remember { mutableStateOf(userProfile?.nombre_1 ?: "") }
+    val email = remember { mutableStateOf(userProfile?.correo_personal ?: "") }
+    val phone = remember { mutableStateOf(userProfile?.telefono_1 ?: "") }
 
     Dialog(
         onDismissRequest = onDismiss,

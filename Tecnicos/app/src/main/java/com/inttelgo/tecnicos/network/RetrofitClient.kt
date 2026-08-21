@@ -20,7 +20,9 @@ import java.security.cert.X509Certificate
 
 @SuppressLint("StaticFieldLeak")
 object RetrofitClient {
-    private const val BASE_URL = "http://192.168.1.53:3000/api/" //"https://internetdedicado.com.co/api/"
+    //private const val BASE_URL = "http://192.168.1.23:3000/"
+
+    private const val BASE_URL =  "https://api.inttelgo.com/"
     private const val TAG = "RetrofitClient"
 
     private val logging = HttpLoggingInterceptor().apply {

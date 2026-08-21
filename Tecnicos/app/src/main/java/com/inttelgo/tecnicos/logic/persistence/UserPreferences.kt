@@ -20,6 +20,7 @@ class UserPreferences (context: Context){
         const val KEY_TOKEN_EXPIRY = "token_expiry_time"
         const val KEY_USERNAME = "saved_username"
         const val KEY_PASSWORD = "saved_password"
+        const val KEY_FCM_TOKEN = "fcm_token"
     }
 
     fun saveUser(usuario: UsuarioAuth) {
@@ -74,6 +75,12 @@ class UserPreferences (context: Context){
         return !getSavedUsername().isNullOrEmpty() && !getSavedPassword().isNullOrEmpty()
     }
 
+    fun saveFcmToken(token: String) {
+        sharedPreferences.edit { putString(KEY_FCM_TOKEN, token) }
+    }
+
+    fun getFcmToken(): String? = sharedPreferences.getString(KEY_FCM_TOKEN, null)
+
     fun clearUser() {
         sharedPreferences.edit {
             remove(KEY_USER_JSON)
@@ -81,6 +88,7 @@ class UserPreferences (context: Context){
             remove(KEY_TOKEN_EXPIRY)
             remove(KEY_USERNAME)
             remove(KEY_PASSWORD)
+            remove(KEY_FCM_TOKEN)
         }
     }
 }

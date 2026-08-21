@@ -4,10 +4,12 @@ import com.inttelgo.tecnicos.R
 import android.Manifest
 import android.content.Context
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -15,29 +17,44 @@ import androidx.compose.animation.core.animateIntOffset
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -55,39 +73,103 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.fragment.app.FragmentActivity
 import com.inttelgo.tecnicos.components.ModernTopAppBar
+import com.inttelgo.tecnicos.components.QrScannerDialog
 import com.inttelgo.tecnicos.layout.Tareas
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.layout.Proceso
 import com.inttelgo.tecnicos.layout.Soporte
+import com.inttelgo.tecnicos.logic.Model.JornadaCheckType
+import com.inttelgo.tecnicos.logic.Model.JornadaQrPayload
+import com.inttelgo.tecnicos.logic.persistence.BiometricAuth
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
+import com.inttelgo.tecnicos.navigation.HomeSection
 import com.inttelgo.tecnicos.viewmodel.HomeViewModel
-import com.inttelgo.tecnicos.viewmodel.LoginViewModel
+import com.inttelgo.tecnicos.viewmodel.JornadaUiState
+import com.inttelgo.tecnicos.viewmodel.JornadaViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     context: Context,
+    selectedSection: HomeSection,
+    onSectionSelected: (HomeSection) -> Unit,
     navigateToUploadImage: (id: String, type: String) -> Unit,
     navigateToSupport: (idSupport: String) -> Unit,
     navigateToTarea: (idTarea: String) -> Unit,
-    navigateToLogin: () -> Unit,
-    navigateToProfile: () -> Unit
+    navigateToInstalacion: (idInstalacion: String) -> Unit,
+    navigateToProfile: () -> Unit,
+    jornadaViewModel: JornadaViewModel
 ) {
-    val viewModelL: LoginViewModel = remember { LoginViewModel() }
     val viewModelH: HomeViewModel = remember { HomeViewModel() }
+    val jornadaState by jornadaViewModel.uiState.collectAsState()
+    val showIngresoButton by jornadaViewModel.showIngresoButton.collectAsState()
+    val showSalidaButton by jornadaViewModel.showSalidaButton.collectAsState()
     val expanded = remember { mutableStateOf(false) }
     val hasFineLocation = remember { mutableStateOf(false) }
     val hasCoarseLocation = remember { mutableStateOf(false) }
     val userPreferences = UserPreferences(context)
     val hasInternetConnection = rememberNetworkConnectivityState(context)
+
+    var pendingCheckType by remember { mutableStateOf<JornadaCheckType?>(null) }
+    var showQrScanner by remember { mutableStateOf(false) }
+    var scannedQr by remember { mutableStateOf<JornadaQrPayload?>(null) }
+    var showOficinaConfirm by remember { mutableStateOf(false) }
+    var jornadaFabExpanded by remember { mutableStateOf(false) }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            showQrScanner = true
+        } else {
+            Toast.makeText(context, "Se requiere la cámara para leer el QR", Toast.LENGTH_LONG).show()
+            pendingCheckType = null
+        }
+    }
+
+    fun startJornadaFlow(type: JornadaCheckType) {
+        pendingCheckType = type
+        scannedQr = null
+        showOficinaConfirm = false
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    fun requestBiometricAndSend(qr: JornadaQrPayload, type: JornadaCheckType) {
+        val activity = context as? FragmentActivity
+        if (activity == null) {
+            Toast.makeText(context, "No se pudo iniciar la biometría", Toast.LENGTH_LONG).show()
+            return
+        }
+        val isIngreso = type == JornadaCheckType.INGRESO
+        BiometricAuth.authenticate(
+            activity = activity,
+            title = if (isIngreso) "Registrar ingreso" else "Registrar salida",
+            subtitle = if (isIngreso) {
+                "Confirma tu ingreso con la huella"
+            } else {
+                "Confirma tu salida con la huella"
+            },
+            onSuccess = {
+                jornadaViewModel.registerAfterBiometric(context, type, qr)
+            },
+            onError = { message ->
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            },
+            onCancel = {
+                Toast.makeText(context, "Debes confirmar con huella para continuar", Toast.LENGTH_LONG).show()
+            }
+        )
+    }
 
     // Tabs con diseño mejorado usando la nueva paleta
     val tabs = listOf(
@@ -107,7 +189,7 @@ fun HomeScreen(
         ),
         TabItem(
             title = "Instalacion",
-            screen = { Proceso(navigateToUploadImage, context) },
+            screen = { Proceso(navigateToInstalacion, context) },
             selectedColor = MaterialTheme.colorScheme.secondary, // DeepOrange500
             unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant, // Gray700
             icon = R.drawable.ic_house_wifi
@@ -133,18 +215,128 @@ fun HomeScreen(
         }
     }
 
-    // Verificar si el usuario está logueado
-    /*if (userPreferences.getUser() == null) {
-        LaunchedEffect(Unit) {
-            viewModelL.isLoggedUser(navigateToLogin, userPreferences.getUser() as Nothing?)
-        }
-    }*/
-
     // Cargar datos iniciales solo una vez
     LaunchedEffect(Unit) {
         if (userPreferences.getUser() != null && hasInternetConnection.value) {
             viewModelH.consultBarrios()
         }
+        // Reintenta cargar jornada si aún no hay id (p. ej. falló el parseo anterior).
+        jornadaViewModel.loadJornadaOnce(context)
+    }
+
+    LaunchedEffect(showIngresoButton, showSalidaButton) {
+        if (!showIngresoButton && !showSalidaButton) {
+            jornadaFabExpanded = false
+        }
+    }
+
+    LaunchedEffect(jornadaState) {
+        when (val state = jornadaState) {
+            is JornadaUiState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                pendingCheckType = null
+                scannedQr = null
+                showOficinaConfirm = false
+                jornadaFabExpanded = false
+                jornadaViewModel.clearMessage()
+            }
+            is JornadaUiState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                jornadaViewModel.clearMessage()
+            }
+            else -> Unit
+        }
+    }
+
+    if (showQrScanner && pendingCheckType != null) {
+        QrScannerDialog(
+            title = if (pendingCheckType == JornadaCheckType.INGRESO) {
+                "QR ingreso"
+            } else {
+                "QR salida"
+            },
+            onQrScanned = { raw ->
+                showQrScanner = false
+                val qr = jornadaViewModel.parseJornadaQr(raw)
+                if (qr == null) {
+                    Toast.makeText(context, "QR inválido", Toast.LENGTH_LONG).show()
+                    pendingCheckType = null
+                } else {
+                    scannedQr = qr
+                    showOficinaConfirm = true
+                }
+            },
+            onDismiss = {
+                showQrScanner = false
+                pendingCheckType = null
+            }
+        )
+    }
+
+    if (showOficinaConfirm && scannedQr != null && pendingCheckType != null) {
+        val qr = scannedQr!!
+        val type = pendingCheckType!!
+        AlertDialog(
+            onDismissRequest = {
+                showOficinaConfirm = false
+                scannedQr = null
+                pendingCheckType = null
+            },
+            title = {
+                Text(
+                    text = if (type == JornadaCheckType.INGRESO) {
+                        "Confirmar ingreso"
+                    } else {
+                        "Confirmar salida"
+                    }
+                )
+            },
+            text = {
+                Column {
+                    Text("Datos del QR:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = qr.usuario,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "ID usuario: ${qr.id}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Oficina: ${qr.oficina.descripcion} (ID ${qr.oficina.id})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Al enviar se solicitará tu huella para registrar la marca.")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showOficinaConfirm = false
+                        requestBiometricAndSend(qr, type)
+                    }
+                ) {
+                    Text("Enviar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showOficinaConfirm = false
+                        scannedQr = null
+                        pendingCheckType = null
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     if (userPreferences.getUser() == null) {
@@ -169,7 +361,7 @@ fun HomeScreen(
             },
             containerColor = MaterialTheme.colorScheme.primaryContainer // Background color del tema
         ) { innerPadding ->
-            Column(
+            Box(
                 modifier = Modifier
                     .padding(innerPadding)
                     .fillMaxSize()
@@ -182,15 +374,178 @@ fun HomeScreen(
                         )
                     )
             ) {
-                ModernTabs(tabs)
+                ModernTabs(
+                    tabs = tabs,
+                    selectedSection = selectedSection,
+                    onSectionSelected = onSectionSelected
+                )
+
+                if (showIngresoButton || showSalidaButton) {
+                    JornadaExpandableFab(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .zIndex(8f)
+                            .padding(end = 16.dp, bottom = 88.dp),
+                        expanded = jornadaFabExpanded,
+                        showIngreso = showIngresoButton,
+                        showSalida = showSalidaButton,
+                        isLoading = jornadaState is JornadaUiState.Loading,
+                        onToggle = { jornadaFabExpanded = !jornadaFabExpanded },
+                        onIngresoClick = {
+                            jornadaFabExpanded = false
+                            startJornadaFlow(JornadaCheckType.INGRESO)
+                        },
+                        onSalidaClick = {
+                            jornadaFabExpanded = false
+                            startJornadaFlow(JornadaCheckType.SALIDA)
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ModernTabs(tabs: List<TabItem>) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+private fun JornadaExpandableFab(
+    modifier: Modifier = Modifier,
+    expanded: Boolean,
+    showIngreso: Boolean,
+    showSalida: Boolean,
+    isLoading: Boolean,
+    onToggle: () -> Unit,
+    onIngresoClick: () -> Unit,
+    onSalidaClick: () -> Unit
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 90f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "jornadaFabRotation"
+    )
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AnimatedVisibility(
+            visible = expanded && showSalida,
+            enter = fadeIn() + scaleIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + scaleOut() + slideOutVertically { it / 2 }
+        ) {
+            JornadaFabAction(
+                label = "Salida",
+                iconRes = R.drawable.ic_log_out,
+                enabled = !isLoading,
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+                onClick = onSalidaClick
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded && showIngreso,
+            enter = fadeIn() + scaleIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + scaleOut() + slideOutVertically { it / 2 }
+        ) {
+            JornadaFabAction(
+                label = "Ingreso",
+                iconRes = R.drawable.ic_camera,
+                enabled = !isLoading,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                onClick = onIngresoClick
+            )
+        }
+
+        FloatingActionButton(
+            onClick = onToggle,
+            containerColor = if (expanded) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.primary
+            },
+            contentColor = if (expanded) {
+                MaterialTheme.colorScheme.onError
+            } else {
+                MaterialTheme.colorScheme.onPrimary
+            },
+            shape = CircleShape
+        ) {
+            Icon(
+                painter = painterResource(
+                    if (expanded) R.drawable.ic_x else R.drawable.ic_calendar_days
+                ),
+                contentDescription = if (expanded) "Cerrar jornada" else "Jornada",
+                modifier = Modifier
+                    .size(24.dp)
+                    .rotate(rotation)
+            )
+        }
+    }
+}
+
+@Composable
+private fun JornadaFabAction(
+    label: String,
+    iconRes: Int,
+    enabled: Boolean,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+        SmallFloatingActionButton(
+            onClick = { if (enabled) onClick() },
+            containerColor = containerColor,
+            contentColor = contentColor,
+            shape = CircleShape
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = label,
+                modifier = Modifier
+                    .size(20.dp)
+                    .alpha(if (enabled) 1f else 0.5f)
+            )
+        }
+    }
+}
+
+private fun HomeSection.toTabIndex(): Int = when (this) {
+    HomeSection.Soporte -> 0
+    HomeSection.Tareas -> 1
+    HomeSection.Procesos -> 2
+}
+
+private fun Int.toHomeSection(): HomeSection = when (this) {
+    1 -> HomeSection.Tareas
+    2 -> HomeSection.Procesos
+    else -> HomeSection.Soporte
+}
+
+@Composable
+private fun ModernTabs(
+    tabs: List<TabItem>,
+    selectedSection: HomeSection,
+    onSectionSelected: (HomeSection) -> Unit
+) {
+    val selectedTab = selectedSection.toTabIndex()
 
     val buttons = remember(tabs) {
         tabs.map { tab -> ButtonData(text = tab.title, icon = tab.icon!!) }
@@ -210,7 +565,7 @@ private fun ModernTabs(tabs: List<TabItem>) {
         AnimatedNavigationBar(
             buttons = buttons,
             selectedIndex = selectedTab,
-            onItemSelected = { selectedTab = it },
+            onItemSelected = { onSectionSelected(it.toHomeSection()) },
             barColor = MaterialTheme.colorScheme.surface,
             circleColor = MaterialTheme.colorScheme.primary,
             selectedColor = MaterialTheme.colorScheme.onPrimary,
@@ -346,7 +701,7 @@ private class BarShape(
             val cutoutRightX = cutoutCenterX + cutoutEdgeOffset
 
             // bottom left
-            moveTo(x = 0F, y = size.height.toFloat())
+            moveTo(x = 0F, y = size.height)
             // top left
             if (cutoutLeftX > 0) {
                 val realLeftCornerDiameter = if (cutoutLeftX >= cornerRadiusPx) {
@@ -397,7 +752,7 @@ private class BarShape(
                     rect = Rect(
                         left = size.width - realRightCornerDiameter,
                         top = 0f,
-                        right = size.width.toFloat(),
+                        right = size.width,
                         bottom = realRightCornerDiameter
                     ),
                     startAngleDegrees = -90.0f,
@@ -406,16 +761,11 @@ private class BarShape(
                 )
             }
             // bottom right
-            lineTo(x = size.width.toFloat(), y = size.height.toFloat())
+            lineTo(x = size.width, y = size.height)
             close()
         }
     }
 }
-
-// Source - https://stackoverflow.com/a/78329710
-// Posted by Jan Itor
-// Retrieved 2026-03-19, License - CC BY-SA 4.0
-
 @Composable
 private fun Circle(
     modifier: Modifier = Modifier,
@@ -442,6 +792,5 @@ private fun Circle(
         }
     }
 }
-
 
 data class ButtonData(val text: String, val icon: Int)

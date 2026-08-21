@@ -1,8 +1,11 @@
 package com.inttelgo.tecnicos.logic.Model.Response
 
+import com.google.gson.annotations.SerializedName
+
 data class ObservacionResponse(
     val success: Boolean,
-    val mensaje: String?,
+    @SerializedName(value = "mensaje", alternate = ["message"])
+    val mensaje: String? = null,
     val evidencias: List<Evidencia>? = null,
     val errores: List<String>? = null
 )
@@ -16,5 +19,6 @@ data class Evidencia(
 
 data class FinishObservacionResponse(
     val success: Boolean = false,
+    @SerializedName(value = "mensaje", alternate = ["message"])
     val mensaje: String? = null,
 )

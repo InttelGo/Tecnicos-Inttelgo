@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrainsKotlinSerialization)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -59,6 +60,7 @@ dependencies {
     implementation (libs.androidx.camera.lifecycle)
     implementation (libs.androidx.camera.view)
     implementation (libs.androidx.camera.extensions)
+    implementation(libs.mlkit.barcode.scanning)
     implementation (libs.androidx.runtime)
 
     //DataBase
@@ -71,6 +73,10 @@ dependencies {
     //Maps SDK
     implementation(libs.play.services.maps)
     implementation (libs.play.services.location)
+
+    // Firebase Cloud Messaging
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     //Corrutine
 
@@ -116,4 +122,5 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.androidx.biometric)
 }

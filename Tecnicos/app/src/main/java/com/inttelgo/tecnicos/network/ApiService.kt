@@ -6,14 +6,19 @@ import com.inttelgo.tecnicos.logic.Model.CreateEvidenciaInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.DeleteImageResponse
 import com.inttelgo.tecnicos.logic.Model.EvidenciasInstalationResponse
 import com.inttelgo.tecnicos.logic.Model.FinishInstalationResponse
+import com.inttelgo.tecnicos.logic.Model.JornadaResponse
 import com.inttelgo.tecnicos.logic.Model.LoginRequest
 import com.inttelgo.tecnicos.logic.Model.LoginResponse
+import com.inttelgo.tecnicos.logic.Model.ObsInstalacionEvidenciaResponse
+import com.inttelgo.tecnicos.logic.Model.ObsInstalacionResponse
 import com.inttelgo.tecnicos.logic.Model.ObsTareaEvidenciaResponse
 import com.inttelgo.tecnicos.logic.Model.ObsTareaResponse
 import com.inttelgo.tecnicos.logic.Model.ObsTicketEvidenciaResponse
 import com.inttelgo.tecnicos.logic.Model.ObsTicketResponse
 import com.inttelgo.tecnicos.logic.Model.ProcessWithFiltersResponse
+import com.inttelgo.tecnicos.logic.Model.ProcesoDetailResponse
 import com.inttelgo.tecnicos.logic.Model.Request.AddInventaryInstalacionRequest
+import com.inttelgo.tecnicos.logic.Model.Request.FcmTokenRequest
 import com.inttelgo.tecnicos.logic.Model.Request.UbicationRequest
 import com.inttelgo.tecnicos.logic.Model.Response.AddInventaryInstalacionResponse
 import com.inttelgo.tecnicos.logic.Model.Response.FinishObservacionResponse
@@ -24,6 +29,7 @@ import com.inttelgo.tecnicos.logic.Model.SoporteWithFiltersResponse
 import com.inttelgo.tecnicos.logic.Model.TareaResponse
 import com.inttelgo.tecnicos.logic.Model.TareaWithFiltersResponse
 import com.inttelgo.tecnicos.logic.Model.TicketResponse
+import com.inttelgo.tecnicos.logic.Model.UpdateJornadaRequest
 import com.inttelgo.tecnicos.logic.Model.UpdateProfileRequest
 import com.inttelgo.tecnicos.logic.Model.UserProfileResponse
 import com.inttelgo.tecnicos.logic.Model.updateInstallationBody
@@ -66,6 +72,9 @@ interface ApiService {
     @POST("usuario/ubicacion")
     suspend fun ubication(@Body ubicationRequest: UbicationRequest): Response<UbicationResponse>
 
+    @POST("usuario/fcm-token")
+    suspend fun registerFcmToken(@Body request: FcmTokenRequest): Response<MessageResponse>
+
     @GET("ticket/search")
     suspend fun ticketsWithFilter(
         @Query("filters") filters: String,
@@ -76,55 +85,117 @@ interface ApiService {
 
     @GET("tarea/search")
     suspend fun tareasWithFilter(
-        @Query("form") form: String,
-        @Query("area") area: Int,
+        @Query("filters") filters: String,
+        @Query("pagination") pagination: Int,
+        @Query("limit") limit: Int,
+        @Query("sorting") sorting: String
     ): Response<TareaWithFiltersResponse>
 
     @GET("barrio")
     suspend fun consultAllNeighborhoods(): Response<BarriosResponse>
+
+    @GET("instalacion/{id}")
+    suspend fun instalacionByID(@Path("id") id: String): Response<ProcesoDetailResponse>
 
     @GET("ticket/{id}")
     suspend fun ticketByID(@Path("id") id: String):Response<TicketResponse>
     @GET("tarea/{id}")
     suspend fun tareaByID(@Path("id") id: String): Response<TareaResponse>
 
-    @GET("observaciones/ticket/search/{id}")
-    suspend fun consultObsWitFilterAndId(@Path("id") id : String, @Query("form") form: String): Response<ObsTicketResponse>
+    @GET("ticket/{id}/observacion")
+    suspend fun consultObsWitFilterAndId(
+        @Path("id") id : String,
+        @Query("filters") filters: String,
+        @Query("pagination") pagination: Int,
+        @Query("limit") limit: Int,
+        @Query("sorting") sorting: String
+    ): Response<ObsTicketResponse>
 
-    @GET("observaciones/tarea/search/{id}")
-    suspend fun consultObsTareaWitFilterAndId(@Path("id") id : String, @Query("form") form: String): Response<ObsTareaResponse>
-    @GET("observaciones/ticket/media/{id}")
-    suspend fun consultByObsTicket(@Path("id") id: String ): Response<ObsTicketEvidenciaResponse>
+    @GET("tarea/{id}/observacion/search")
+    suspend fun consultObsTareaWitFilterAndId(
+        @Path("id") id : String,
+        @Query("filters") filters: String,
+        @Query("pagination") pagination: Int,
+        @Query("limit") limit: Int,
+        @Query("sorting") sorting: String
+    ): Response<ObsTareaResponse>
 
-    @GET("observaciones/tarea/media/{id}")
-    suspend fun consultByObsTarea (@Path("id") id: String ): Response<ObsTareaEvidenciaResponse>
+    @GET("instalacion/{id}/observacion/search")
+    suspend fun consultObsInstalacionWithFilter(
+        @Path("id") id: String,
+        @Query("filters") filters: String,
+        @Query("pagination") pagination: Int,
+        @Query("limit") limit: Int,
+        @Query("sorting") sorting: String
+    ): Response<ObsInstalacionResponse>
+
+    @GET("ticket/{id_ticket}/observacion/{id}/media")
+    suspend fun consultByObsTicket(
+        @Path("id_ticket") idTicket: String,
+        @Path("id") idObservacion: String
+    ): Response<ObsTicketEvidenciaResponse>
+
+    @GET("tarea/{id}/observacion/{obs_id}/media")
+    suspend fun consultByObsTarea(
+        @Path("id") idTarea: String,
+        @Path("obs_id") idObservacion: String
+    ): Response<ObsTareaEvidenciaResponse>
+
+    @GET("instalacion/{id}/observacion/{id_observacion}/media")
+    suspend fun consultByObsInstalacion(
+        @Path("id") id: String,
+        @Path("id_observacion") idObservacion: String
+    ): Response<ObsInstalacionEvidenciaResponse>
     @Multipart
-    @POST("observaciones/ticket")
+    @POST("ticket/{id}/observacion")
     suspend fun createObsTicket(
-        @Part("id") id: RequestBody,
+        @Path("id") id: String,
         @Part("observacion") observacion: RequestBody,
         @Part("latitud") latitud: RequestBody? = null,
         @Part("longitud") longitud: RequestBody? = null,
+        @Part("es_encargado") esEncargado: RequestBody? = null,
+        @Part("nombre_encargado") nombreEncargado: RequestBody? = null,
+        @Part("identificacion_encargado") identificacionEncargado: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null,
         @Part media: List<MultipartBody.Part>? = null
     ): Response<ObservacionResponse>
 
     @Multipart
-    @POST("observaciones/ticket/finish")
+    @POST("ticket/{id}/observacion/finish")
     suspend fun finishObsTicket(
-        @Part("id") id: RequestBody,
+        @Path("id") id: String,
         @Part("observacion") observacion: RequestBody,
         @Part("latitud") latitud: RequestBody? = null,
         @Part("longitud") longitud: RequestBody? = null,
+        @Part("es_encargado") esEncargado: RequestBody? = null,
+        @Part("nombre_encargado") nombreEncargado: RequestBody? = null,
+        @Part("identificacion_encargado") identificacionEncargado: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null,
         @Part media: List<MultipartBody.Part>? = null
     ): Response<FinishObservacionResponse>
 
     @Multipart
-    @POST("observaciones/tarea")
+    @POST("tarea/{id}/observacion")
     suspend fun createObsTarea(
-        @Part("id") id: RequestBody,
+        @Path("id") id: String,
         @Part("observacion") observacion: RequestBody,
         @Part("latitud") latitud: RequestBody? = null,
         @Part("longitud") longitud: RequestBody? = null,
+        @Part("es_encargado") esEncargado: RequestBody? = null,
+        @Part("nombre_encargado") nombreEncargado: RequestBody? = null,
+        @Part("identificacion_encargado") identificacionEncargado: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null,
+        @Part media: List<MultipartBody.Part>? = null
+    ): Response<ObservacionResponse>
+
+    @Multipart
+    @POST("instalacion/{id}/observacion")
+    suspend fun createObsInstalacion(
+        @Path("id") id: String,
+        @Part("observacion") observacion: RequestBody,
+        @Part("latitud") latitud: RequestBody? = null,
+        @Part("longitud") longitud: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null,
         @Part media: List<MultipartBody.Part>? = null
     ): Response<ObservacionResponse>
 
@@ -137,29 +208,40 @@ interface ApiService {
         @Path("id") id: String,
         @Part("latitud") latitud: RequestBody? = null,
         @Part("longitud") longitud: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null,
         @Part media: List<MultipartBody.Part>? = null
     ): Response<CreateEvidenciaInstalationResponse>
 
     @Multipart
-    @POST("observaciones/tarea/finish")
+    @POST("tarea/{id}/observacion/finish")
     suspend fun finishObsTarea(
-        @Part("id") id: RequestBody,
+        @Path("id") id: String,
         @Part("observacion") observacion: RequestBody,
         @Part("latitud") latitud: RequestBody? = null,
         @Part("longitud") longitud: RequestBody? = null,
         @Part("articulos") articulos: String? = null,
+        @Part("es_encargado") esEncargado: RequestBody? = null,
+        @Part("nombre_encargado") nombreEncargado: RequestBody? = null,
+        @Part("identificacion_encargado") identificacionEncargado: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null,
         @Part media: List<MultipartBody.Part>? = null
     ): Response<FinishObservacionResponse>
 
     @POST("instalacion/media/delete/{id}")
     suspend fun deleteImage(@Path("id") id: String): Response<DeleteImageResponse>
     @Multipart
-    @POST("instalacion/finish")
+    @POST("instalacion/{id}/observacion/finish")
     suspend fun finishTicket(
-        @Part("id") id: RequestBody,
+        @Path("id") id: String,
+        @Part("latitud") latitud: RequestBody? = null,
+        @Part("longitud") longitud: RequestBody? = null,
         @Part("observacion") observacion: RequestBody,
         @Part media: List<MultipartBody.Part>? = null,
-        @Part("articulos") articulos: String? = null
+        @Part("articulos") articulos: String? = null,
+        @Part("es_encargado") esEncargado: RequestBody? = null,
+        @Part("nombre_encargado") nombreEncargado: RequestBody? = null,
+        @Part("identificacion_encargado") identificacionEncargado: RequestBody? = null,
+        @Part("skipProcess") skipProcess: RequestBody? = null
     ): Response<FinishInstalationResponse>
 
     @GET("usuario/{id}")
@@ -170,4 +252,17 @@ interface ApiService {
         @Path("id") id: String,
         @Body request: UpdateProfileRequest
     ): Response<UserProfileResponse>
+
+    @GET("usuario/{userId}/jornada/dia/{day}")
+    suspend fun getJornadaByDay(
+        @Path("userId") userId: String,
+        @Path("day") day: String
+    ): Response<JornadaResponse>
+
+    @PUT("usuario/{userId}/jornada/{id}")
+    suspend fun updateJornada(
+        @Path("userId") userId: String,
+        @Path("id") id: String,
+        @Body request: UpdateJornadaRequest
+    ): Response<JornadaResponse>
 }

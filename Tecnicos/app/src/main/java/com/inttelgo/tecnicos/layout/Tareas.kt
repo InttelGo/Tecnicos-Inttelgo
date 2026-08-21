@@ -3,7 +3,6 @@ package com.inttelgo.tecnicos.layout
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -19,7 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -49,8 +48,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.CuentaInfoSection
@@ -68,6 +72,8 @@ import com.inttelgo.tecnicos.logic.Model.DialogType
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.Sorting
 import com.inttelgo.tecnicos.logic.Model.Tarea
+import com.inttelgo.tecnicos.logic.Model.assignedToUserFilter
+import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.process.homeProcess
 import com.inttelgo.tecnicos.viewmodel.HomeViewModel
 import com.inttelgo.tecnicos.viewmodel.TareaViewModel
@@ -83,7 +89,13 @@ fun Tareas(
     context: Context
 ){
     val viewModel: TareaViewModel = remember { TareaViewModel() }
-    val filters = remember { mutableStateListOf(Filter("id_tarea", "contains", ""), Filter("id_estado_solicitud", "in", listOf("1", "2"), logic = "AND"))}
+    val userPreferences = remember { UserPreferences(context) }
+    val filters = remember {
+        mutableStateListOf(
+            Filter(column = "id_estado_solicitud", operator = "in", value = listOf("7", "8")),
+            Filter(column = "id_tarea", operator = "contains", value = "", logic = "AND")
+        )
+    }
     val sorting = remember { Sorting("fecha_creacion", true) }
     val prioritySelected = remember { mutableIntStateOf(0) }
     val tareas by viewModel.tareasData.collectAsState()
@@ -97,23 +109,51 @@ fun Tareas(
 
     // Content Section
     LaunchedEffect(prioritySelected.intValue, search.value) {
-        if(hasInternetConnection.value){
-            Log.d("TAREASVIEW", search.value)
-            val updatedFilters = filters.map { filter ->
-                if (filter.column == "id_tarea") {
-                    filter.copy(
-                        value = search.value,
-                        operator = if (search.value.length > 3) "equals" else "contains"
+        if (hasInternetConnection.value) {
+            val userId = userPreferences.getUser()?.id
+            if (userId == null) return@LaunchedEffect
+
+            val updatedFilters = mutableListOf<Filter>()
+
+            // 1) Estados abiertos (siempre aplica, también para asistente)
+            updatedFilters.add(
+                Filter(
+                    column = "id_estado_solicitud",
+                    operator = "in",
+                    value = listOf("7", "8")
+                )
+            )
+
+            // 2) Asignado como operador O asistente (grupo OR)
+            updatedFilters.add(assignedToUserFilter(userId, logic="AND"))
+
+            // 3) Búsqueda por id
+            updatedFilters.add(
+                Filter(
+                    column = "id_tarea",
+                    operator = if (search.value.length > 3) "equals" else "contains",
+                    value = search.value,
+                    logic = "AND"
+                )
+            )
+
+            // 4) Prioridad (solo si no es "Todos")
+            if (prioritySelected.intValue != 0) {
+                updatedFilters.add(
+                    Filter(
+                        column = "prioridad",
+                        operator = "equals",
+                        value = prioritySelected.intValue.toString(),
+                        logic = "AND"
                     )
-                } else {
-                    filter
-                }
+                )
             }
+
             filters.clear()
             filters.addAll(updatedFilters)
-            Log.d("TAREASVIEW", filters.toString())
+
             viewModel.resetPagination()
-            viewModel.consultMoreTareas(filters= filters, sorting= sorting )
+            viewModel.consultMoreTareas(filters = filters, sorting = sorting)
         }
     }
 
@@ -256,6 +296,7 @@ fun Tareas(
                                 ) { tarea ->
                                     TareaCard(
                                         tarea = tarea,
+                                        context = context,
                                         onViewMore = {
                                             navigateToTarea(tarea.id.toString())
                                         }
@@ -319,6 +360,7 @@ private fun BarrioHeader(barrio: String, tareaCount: Int) {
 @Composable
 private fun TareaCard(
     tarea: Tarea,
+    context: Context,
     onViewMore: () -> Unit
 ) {
     Card(
@@ -365,7 +407,7 @@ private fun TareaCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Ticket Type Icon
-                //TicketTypeSection(ticket = ticket, context = context)
+                TareaTypeSection(tarea = tarea, context = context)
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -384,7 +426,7 @@ private fun TareaCard(
                     ) {
                         Text(
                             text = buildString {
-                                tarea.cuenta?.plan?.let {append("${it} MB " )}
+                                tarea.cuenta?.plan?.let {append("$it MB " )}
                                 tarea.cuenta?.tipo_plan?.let{ append(it.descripcion) }
                                 append(" ")
                                 append(tarea.cuenta?.tipo_servicio?.descripcion)
@@ -440,6 +482,61 @@ private fun TareaCard(
         }
     }
 }
+@SuppressLint("DiscouragedApi")
+@Composable
+private fun TareaTypeSection(tarea: Tarea, context: Context) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.width(100.dp).height(150.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(12.dp)
+        ) {
+            tarea.tipo?.let { tipo ->
+                val iconResId = remember(tipo.icono) {
+                    context.resources.getIdentifier(
+                        tipo.icono,
+                        "drawable",
+                        context.packageName
+                    )
+                }
+
+                if (iconResId != 0) {
+                    Icon(
+                        painter = painterResource(iconResId),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Red
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Red
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = tipo.descripcion,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 12.sp
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun LoadMoreTrigger(

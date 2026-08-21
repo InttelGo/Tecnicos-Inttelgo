@@ -1,21 +1,33 @@
 package com.inttelgo.tecnicos.logic.Model
 
+import com.google.gson.annotations.SerializedName
+
 data class ObsTicket(
     val id: String = "",
-    val descripcion: String = "",
-    val fecha: String = "",
-    val usuario: Usuario? = null
+    @SerializedName(value = "content", alternate = ["observacion"])
+    val content: String = "",
+    @SerializedName(value = "create_at", alternate = ["fecha", "fecha_creacion"])
+    val create_at: String = "",
+    @SerializedName(value = "create_by", alternate = ["usuario"])
+    val create_by: Usuario? = null
 )
 
 data class ObsTicketResponse(
     val success: Boolean = false,
-    val mensaje: String ="",
+    @SerializedName(value = "mensaje", alternate = ["message"])
+    val mensaje: String = "",
     val observaciones: List<ObsTicket>? = emptyList(),
     val totalPages: Int = 1
 )
 
 data class ObsTicketEvidenciaResponse(
     val success: Boolean = false,
-    val mensaje: String ="",
-    val evidencias: List<FotoSoporte>? = emptyList()
-)
+    @SerializedName(value = "mensaje", alternate = ["message"])
+    val mensaje: String = "",
+    val observacion: ObservacionConEvidencias? = null,
+    val evidencias: List<EvidenciaMedia>? = emptyList()
+) {
+    fun resolvedEvidencias(): List<EvidenciaMedia> {
+        return observacion?.evidencias ?: evidencias ?: emptyList()
+    }
+}

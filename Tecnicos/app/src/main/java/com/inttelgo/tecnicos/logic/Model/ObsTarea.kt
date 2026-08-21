@@ -16,6 +16,12 @@ data class ObsTareaResponse(
 
 data class ObsTareaEvidenciaResponse(
     val success: Boolean = false,
-    val mensaje: String ="",
-    val evidencias: List<FotoSoporte>? = emptyList()
-)
+    @com.google.gson.annotations.SerializedName(value = "mensaje", alternate = ["message"])
+    val mensaje: String = "",
+    val observacion: ObservacionConEvidencias? = null,
+    val evidencias: List<EvidenciaMedia>? = emptyList()
+) {
+    fun resolvedEvidencias(): List<EvidenciaMedia> {
+        return observacion?.evidencias ?: evidencias ?: emptyList()
+    }
+}

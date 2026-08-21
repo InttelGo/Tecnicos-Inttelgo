@@ -108,11 +108,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -131,6 +134,8 @@ import com.inttelgo.tecnicos.logic.Model.PriorityData
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.process.ImageOperations
 import com.inttelgo.tecnicos.ui.view.getMediaType
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -143,10 +148,11 @@ import androidx.core.graphics.toColorInt
 import coil.compose.rememberAsyncImagePainter
 import coil.request.CachePolicy
 import coil.request.ImageRequest
-import com.inttelgo.tecnicos.logic.Model.FotoSoporte
 import com.inttelgo.tecnicos.logic.Model.DialogType
+import com.inttelgo.tecnicos.logic.Model.EstadoInstalacion
 import com.inttelgo.tecnicos.logic.Model.FotoInsta
 import com.inttelgo.tecnicos.logic.Model.PrioridadType
+import com.inttelgo.tecnicos.logic.Model.Usuario
 import com.inttelgo.tecnicos.logic.process.OtherOperarions
 
 @SuppressLint("NewApi")
@@ -359,12 +365,13 @@ fun PrioritiesCard(prioritySelected: MutableState<Int>) {
 
 @Composable
 fun ConectionBadge(hasInternetConnection: Boolean){
+    val color = if (hasInternetConnection)
+        colorResource(R.color.success)
+    else
+        Color(R.color.error)
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = if (hasInternetConnection)
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-        else
-            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+        color = color.copy(alpha = 0.1f)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -375,20 +382,14 @@ fun ConectionBadge(hasInternetConnection: Boolean){
                 modifier = Modifier
                     .size(8.dp)
                     .background(
-                        color = if (hasInternetConnection)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error,
+                        color,
                         shape = CircleShape
                     )
             )
             Text(
                 text = if (hasInternetConnection) "Online" else "Offline",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = if (hasInternetConnection)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.error,
+                    color,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -400,7 +401,7 @@ fun ConectionBadge(hasInternetConnection: Boolean){
 fun CuentaInfoSection(cuenta: Cuenta) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = "Cuenta #${cuenta.nro_cuenta}",
+            text = "Servicio #${cuenta.nro_cuenta}",
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -485,8 +486,13 @@ fun ModernTopAppBar(
                     }
                     Column {
                         userPreferences.getUser()?.let {
+                            val apellidoInicial = it.apellido_1
+                                ?.takeIf { apellido -> apellido.isNotBlank() }
+                                ?.firstOrNull()
+                                ?.let { inicial -> " $inicial." }
+                                .orEmpty()
                             Text(
-                                text = "${it.name1} ${it.lastname1?.get(0)}.",
+                                text = "${it.nombre_1.orEmpty()}$apellidoInicial",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -593,6 +599,22 @@ fun LazyImages(
     isCompressing: MutableState<Boolean>,
     required: Boolean = false
 ) {
+    val showGallery = remember { mutableStateOf(false) }
+    val showSuccessAdded = remember { mutableStateOf(false) }
+    val prevFileCount = remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(selectedImages.value.size) {
+        val newSize = selectedImages.value.size
+        if (newSize > prevFileCount.intValue) {
+            prevFileCount.intValue = newSize
+            showSuccessAdded.value = true
+            delay(2000L)
+            showSuccessAdded.value = false
+        } else {
+            prevFileCount.intValue = newSize
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -650,6 +672,38 @@ fun LazyImages(
                 }
             }
 
+            if (showSuccessAdded.value) {
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Archivo agregado exitosamente",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+            }
+
             if (selectedImages.value.isEmpty()) {
                 Spacer(Modifier.height(16.dp))
                 Card(
@@ -690,6 +744,7 @@ fun LazyImages(
             } else {
                 Spacer(Modifier.height(16.dp))
                 Card(
+                    modifier = Modifier.clickable { showGallery.value = true },
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
@@ -711,7 +766,15 @@ fun LazyImages(
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
-                            )
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Ver todos",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -730,6 +793,14 @@ fun LazyImages(
             }
         }
     }
+
+    if (showGallery.value && selectedImages.value.isNotEmpty()) {
+        MediaGalleryDialogUri(
+            media = selectedImages.value,
+            context = context,
+            onClose = { showGallery.value = false }
+        )
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -744,6 +815,7 @@ private fun CardWithBottomSheet(
     val sheetState = rememberModalBottomSheetState()
     val showBottomSheet = remember { mutableStateOf(false) }
     val hasPermissions = remember { mutableStateOf(false) }
+    val compressionScope = rememberCoroutineScope()
 
     val permissions = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
@@ -855,14 +927,14 @@ private fun CardWithBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(modifier = Modifier.weight(1f)) {
-                            CameraScreen(selectedMedia, showBottomSheet, context, hasPermissions.value, isCompressing)
+                            CameraScreen(selectedMedia, showBottomSheet, context, hasPermissions.value, isCompressing, compressionScope)
                         }
                         Box(modifier = Modifier.weight(1f)) {
-                            VideoCameraScreen(selectedMedia, showBottomSheet, context, hasPermissions.value, isCompressing)
+                            VideoCameraScreen(selectedMedia, showBottomSheet, context, hasPermissions.value, isCompressing, compressionScope)
                         }
                     }
 
-                    MediaSelectorView(selectedMedia, context, hasPermissions.value, isCompressing)
+                    MediaSelectorView(selectedMedia, context, hasPermissions.value, isCompressing, compressionScope)
 
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -878,23 +950,23 @@ private fun CameraScreen(
     showBottomSheet: MutableState<Boolean>,
     context: Context,
     enabled: Boolean,
-    isCompressing: MutableState<Boolean>
+    isCompressing: MutableState<Boolean>,
+    compressionScope: CoroutineScope
 ) {
-    val photoFile = remember { File(context.cacheDir, "photo_${System.currentTimeMillis()}.jpg") }
-    val photoUriProvider = FileProvider.getUriForFile(context, "${context.packageName}.provider", photoFile)
-
-    val coroutineScope = rememberCoroutineScope ()
+    var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
-            if (success) {
+            val capturedUri = pendingPhotoUri
+            if (success && capturedUri != null) {
                 isCompressing.value = true
-                coroutineScope.launch {
+                showBottomSheet.value = false
+                compressionScope.launch {
                     try {
                         val compressedFile = ImageOperations().uriToFile(
                             context = context,
-                            uri = photoUriProvider,
+                            uri = capturedUri,
                             currentDate = LocalDateTime.now()
                         )
                         compressedFile?.let { file ->
@@ -905,22 +977,28 @@ private fun CameraScreen(
                             )
                             selectedMedia.value += listOf(compressedUri)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e("StyledOpenCameraScreen", "Error comprimiendo imagen: ${e.message}")
-                        // En caso de error, usar la URI original
-                        selectedMedia.value += listOf(photoUriProvider)
-                    }finally {
+                        Toast.makeText(
+                            context,
+                            "No se pudo comprimir la foto. Intenta de nuevo.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } finally {
                         isCompressing.value = false
                     }
                 }
-                showBottomSheet.value = false
             }
         }
     )
 
     Card(
         onClick = {
-            launcher.launch(photoUriProvider)
+            val captureUri = ImageOperations.newCaptureImageUri(context)
+            pendingPhotoUri = captureUri
+            launcher.launch(captureUri)
         },
         enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
@@ -968,18 +1046,19 @@ private fun VideoCameraScreen(
     showBottomSheet: MutableState<Boolean>,
     context: Context,
     enabled: Boolean,
-    isCompressing: MutableState<Boolean>
+    isCompressing: MutableState<Boolean>,
+    compressionScope: CoroutineScope
 ) {
     val videoFile = remember { File(context.cacheDir, "video_${System.currentTimeMillis()}.mp4") }
     val videoUriProvider = FileProvider.getUriForFile(context, "${context.packageName}.provider", videoFile)
-    val coroutineScope = rememberCoroutineScope ()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CaptureVideo(),
         onResult = { success ->
             if (success) {
                 isCompressing.value = true
-                coroutineScope.launch {
+                showBottomSheet.value = false
+                compressionScope.launch {
                     try {
                         val compressedFile = ImageOperations().uriToFile(
                             context = context,
@@ -994,12 +1073,13 @@ private fun VideoCameraScreen(
                             )
                             selectedMedia.value += listOf(compressedUri)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         e.message?.let { Log.e("VideoCameraScreen", it) }
                         selectedMedia.value += listOf(videoUriProvider)
-                    }finally {
+                    } finally {
                         isCompressing.value = false
-                        showBottomSheet.value = false
                     }
                 }
             }
@@ -1055,9 +1135,9 @@ private fun MediaSelectorView(
     selectedMedia: MutableState<List<Uri?>>,
     context: Context,
     enabled: Boolean,
-    isCompressing: MutableState<Boolean>
+    isCompressing: MutableState<Boolean>,
+    compressionScope: CoroutineScope
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val maxSelectionCount = 10
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
@@ -1066,7 +1146,7 @@ private fun MediaSelectorView(
             if (uris.isNotEmpty()) {
                 // Iniciar proceso de compresión
                 isCompressing.value=true
-                coroutineScope.launch {
+                compressionScope.launch {
                     try {
                         val compressedFiles = mutableListOf<Uri>()
                         // Comprimir cada archivo seleccionado
@@ -1287,6 +1367,10 @@ fun SingleMediaPreview(
     context: Context,
     onClose: () -> Unit
 ) {
+    BackHandler(enabled = uri.value != null) {
+        onClose()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1449,6 +1533,349 @@ fun SingleFotoInstaPreview(
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MediaGalleryDialogUri(
+    media: List<Uri?>,
+    context: Context,
+    onClose: () -> Unit
+) {
+    val currentIndex = remember { mutableIntStateOf(0) }
+    val validMedia = remember(media) { media.filterNotNull() }
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        BackHandler { onClose() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.95f))
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { _, dragAmount ->
+                        if (dragAmount > 50 && currentIndex.intValue > 0) {
+                            currentIndex.intValue--
+                        } else if (dragAmount < -50 && currentIndex.intValue < validMedia.size - 1) {
+                            currentIndex.intValue++
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            val currentUri = validMedia.getOrNull(currentIndex.intValue)
+
+            currentUri?.let {
+                MediaContent(
+                    uri = it,
+                    context = context,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 80.dp, horizontal = 16.dp)
+                )
+            }
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                color = Color.Transparent
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (validMedia.size > 1) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                text = "${currentIndex.intValue + 1} / ${validMedia.size}",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.width(1.dp))
+                    }
+                    Surface(
+                        onClick = onClose,
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cerrar",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (validMedia.size > 1) {
+                if (currentIndex.intValue > 0) {
+                    Surface(
+                        onClick = { currentIndex.intValue-- },
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(16.dp)
+                            .size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = "Anterior",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+                if (currentIndex.intValue < validMedia.size - 1) {
+                    Surface(
+                        onClick = { currentIndex.intValue++ },
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(16.dp)
+                            .size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = "Siguiente",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (validMedia.size > 1) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars),
+                    color = Color.Transparent
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            validMedia.forEachIndexed { index, _ ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(if (index == currentIndex.intValue) 12.dp else 8.dp)
+                                        .background(
+                                            color = if (index == currentIndex.intValue) Color.White else Color.White.copy(alpha = 0.4f),
+                                            shape = CircleShape
+                                        )
+                                        .animateContentSize()
+                                        .clickable { currentIndex.intValue = index }
+                                )
+                                if (index < validMedia.size - 1) {
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MediaGalleryDialogFotoInsta(
+    media: List<FotoInsta>,
+    context: Context,
+    onClose: () -> Unit
+) {
+    val currentIndex = remember { mutableIntStateOf(0) }
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        BackHandler { onClose() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.95f))
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { _, dragAmount ->
+                        if (dragAmount > 50 && currentIndex.intValue > 0) {
+                            currentIndex.intValue--
+                        } else if (dragAmount < -50 && currentIndex.intValue < media.size - 1) {
+                            currentIndex.intValue++
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            val currentItem = media.getOrNull(currentIndex.intValue)
+
+            currentItem?.let {
+                FotoInstaContent(
+                    uri = it,
+                    context = context,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 56.dp)
+                )
+            }
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                color = Color.Transparent
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (media.size > 1) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                text = "${currentIndex.intValue + 1} / ${media.size}",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.width(1.dp))
+                    }
+                    Surface(
+                        onClick = onClose,
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_x),
+                                contentDescription = "Cerrar",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (media.size > 1) {
+                if (currentIndex.intValue > 0) {
+                    Surface(
+                        onClick = { currentIndex.intValue-- },
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(16.dp)
+                            .size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = "Anterior",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+                if (currentIndex.intValue < media.size - 1) {
+                    Surface(
+                        onClick = { currentIndex.intValue++ },
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(16.dp)
+                            .size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = "Siguiente",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (media.size > 1) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars),
+                    color = Color.Transparent
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            media.forEachIndexed { index, _ ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(if (index == currentIndex.intValue) 12.dp else 8.dp)
+                                        .background(
+                                            color = if (index == currentIndex.intValue) Color.White else Color.White.copy(alpha = 0.4f),
+                                            shape = CircleShape
+                                        )
+                                        .animateContentSize()
+                                        .clickable { currentIndex.intValue = index }
+                                )
+                                if (index < media.size - 1) {
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1772,483 +2199,6 @@ fun ModernDialog(
 }
 
 @Composable
-fun MediaPreview(evidencias: List<FotoSoporte>, onClose: () -> Unit) {
-    val imagenActual = remember { mutableIntStateOf(0) }
-    val currentMedia by remember(imagenActual.intValue) {
-        derivedStateOf { evidencias.getOrNull(imagenActual.intValue) }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.95f))
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    if (dragAmount > 50 && imagenActual.intValue > 0) {
-                        imagenActual.intValue--
-                    } else if (dragAmount < -50 && imagenActual.intValue < evidencias.size - 1) {
-                        imagenActual.intValue++
-                    }
-                }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        // Main media content
-        currentMedia?.let { media ->
-            MediaContent(
-                media = media,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 80.dp, horizontal = 16.dp)
-            )
-        }
-
-        // Top bar with close button and counter
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars),
-            color = Color.Transparent
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Image counter
-                if (evidencias.size > 1) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White.copy(alpha = 0.2f)
-                    ) {
-                        Text(
-                            text = "${imagenActual.intValue + 1} / ${evidencias.size}",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    }
-                } else {
-                    Spacer(Modifier.width(1.dp))
-                }
-
-                // Close button
-                Surface(
-                    onClick = onClose,
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Cerrar",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Navigation arrows (only show if more than one image)
-        if (evidencias.size > 1) {
-            // Left arrow
-            if (imagenActual.intValue > 0) {
-                Surface(
-                    onClick = { imagenActual.intValue-- },
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(16.dp)
-                        .size(56.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = "Anterior",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-            }
-
-            // Right arrow
-            if (imagenActual.intValue < evidencias.size - 1) {
-                Surface(
-                    onClick = { imagenActual.intValue++ },
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(16.dp)
-                        .size(56.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "Siguiente",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Bottom info bar
-        currentMedia?.let { media ->
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars),
-                color = Color.Transparent
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // Media info
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Date
-                        if (media.fecha.isNotEmpty()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Fecha",
-                                    tint = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = media.fecha,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = Color.White.copy(alpha = 0.9f)
-                                    )
-                                )
-                            }
-                        }
-
-                        // Location
-                        if (media.ubicacion.isNotEmpty()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = "Ubicación",
-                                    tint = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = media.ubicacion,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = Color.White.copy(alpha = 0.9f)
-                                    ),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-
-                    // Page indicators (dots)
-                    if (evidencias.size > 1) {
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            evidencias.forEachIndexed { index, _ ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(
-                                            if (index == imagenActual.intValue) 12.dp else 8.dp
-                                        )
-                                        .background(
-                                            color = if (index == imagenActual.intValue)
-                                                Color.White
-                                            else
-                                                Color.White.copy(alpha = 0.4f),
-                                            shape = CircleShape
-                                        )
-                                        .animateContentSize()
-                                        .clickable {
-                                            imagenActual.intValue = index
-                                        }
-                                )
-                                if (index < evidencias.size - 1) {
-                                    Spacer(Modifier.width(8.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MediaContent(
-    media: FotoSoporte,
-    modifier: Modifier = Modifier
-) {
-    val isVideo = media.link.endsWith(".mp4", ignoreCase = true) ||
-            media.link.endsWith(".mov", ignoreCase = true) ||
-            media.link.endsWith(".avi", ignoreCase = true)
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        if (isVideo) {
-            // Video player
-            VideoPlayerComponent(
-                videoUrl = media.link,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
-            )
-        } else {
-            // Image viewer
-            ImageViewerComponent(
-                imageUrl = media.link,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-    }
-}
-
-@Composable
-private fun ImageViewerComponent(
-    imageUrl: String,
-    modifier: Modifier = Modifier
-) {
-    val imageKey = remember(imageUrl) { imageUrl.hashCode().toString() }
-
-    var isLoading by remember(imageKey) { mutableStateOf(true) }
-    var hasError by remember(imageKey) { mutableStateOf(false) }
-    var errorMessage by remember(imageKey) { mutableStateOf("") }
-    var loadStarted by remember(imageKey) { mutableStateOf(false) }
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(imageUrl)
-                .crossfade(true)
-                .memoryCachePolicy(CachePolicy.ENABLED)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .memoryCacheKey(imageKey)
-                .diskCacheKey(imageKey)
-                .listener(
-                    onStart = {
-                        if (!loadStarted) {
-                            loadStarted = true
-                            isLoading = true
-                            hasError = false
-                        }
-                    },
-                    onSuccess = { _, result ->
-                        isLoading = false
-                        hasError = false
-                    },
-                    onError = { _, error ->
-                        isLoading = false
-                        hasError = true
-                        val throwable = error.throwable
-                        errorMessage = throwable.message ?: "Error desconocido"
-                    }
-                )
-                .build(),
-            contentDescription = "Evidencia",
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Fit
-        )
-
-        // Loading indicator
-        if (isLoading) {
-            LoadingIndicator()
-        }
-
-        // Error state
-        if (hasError && !isLoading) {
-            ErrorDisplay(errorMessage, imageUrl)
-        }
-    }
-}
-
-@Composable
-private fun LoadingIndicator() {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.Black.copy(alpha = 0.3f)
-    ) {
-        Box(
-            modifier = Modifier.padding(40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "Cargando imagen...",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun ErrorDisplay(errorMessage: String, imageUrl: String) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.Black.copy(alpha = 0.3f)
-    ) {
-        Box(
-            modifier = Modifier.padding(20.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Error",
-                    tint = Color.Red.copy(alpha = 0.8f),
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "Error al cargar imagen",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontWeight = FontWeight.Bold
-                    ),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = errorMessage,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = Color.Yellow.copy(alpha = 0.9f)
-                    ),
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "URL: ${imageUrl.takeLast(40)}",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = Color.White.copy(alpha = 0.6f)
-                    ),
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@androidx.annotation.OptIn(UnstableApi::class)
-@Composable
-private fun VideoPlayerComponent(
-    videoUrl: String,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(videoUrl)
-            setMediaItem(mediaItem)
-            prepare()
-        }
-    }
-
-    var isPlaying by remember { mutableStateOf(false) }
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        AndroidView(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(12.dp)),
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = true
-                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
-                }
-            }
-        )
-
-        // Play/Pause overlay
-        if (!isPlaying) {
-            Surface(
-                onClick = {
-                    if (exoPlayer.isPlaying) {
-                        exoPlayer.pause()
-                    } else {
-                        exoPlayer.play()
-                    }
-                    isPlaying = !isPlaying
-                },
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.6f),
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (exoPlayer.isPlaying) Icons.Default.Clear else Icons.Default.PlayArrow,
-                        contentDescription = if (exoPlayer.isPlaying) "Pausar" else "Reproducir",
-                        tint = Color.White,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-}
-
-@Composable
 fun HistoryToggle(showHistory: MutableState<Boolean>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2527,6 +2477,201 @@ fun EmptyHistoryCard() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun ObservationHistoryCard(
+    descripcion: String,
+    fecha: String,
+    usuarioNombre: String?,
+    isLoadingEvidencias: Boolean,
+    onViewEvidence: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = formatDate(fecha),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                usuarioNombre?.takeIf { it.isNotBlank() }?.let { nombre ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .wrapContentSize(Alignment.Center)
+                            )
+                        }
+                        Text(
+                            text = nombre,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Observación",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = descripcion.takeIf { it.isNotBlank() }
+                            ?: "Sin observación registrada",
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = if (descripcion.isNotBlank())
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontStyle = if (descripcion.isNotBlank())
+                                FontStyle.Normal else FontStyle.Italic
+                        )
+                    )
+                }
+            }
+
+            OutlinedButton(
+                onClick = onViewEvidence,
+                enabled = !isLoadingEvidencias,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isLoadingEvidencias) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_eye),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Ver evidencias",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Helper: color + etiqueta de estado
+// Ajusta este mapeo si EstadoInstalacion trae más ids / una descripción propia.
+// ─────────────────────────────────────────────────────────────────────────
+@Composable
+fun estadoColors(estadoId: Int?): Pair<Color, Color> {
+    return when (estadoId) {
+        7 -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+    }
+}
+
+fun estadoLabel(estado: EstadoInstalacion?): String {
+    return estado?.descripcion?.takeIf { it.isNotBlank() } ?: "Sin estado"
+}
+
+/**
+ * Par fecha + usuario responsable (opcional).
+ * Si `usuario` es null, el chip solo muestra la fecha formateada.
+ */
+data class FechaInfo(
+    val label: String,
+    val fecha: String,
+    val usuario: Usuario? = null
+)
+
+/**
+ * Chip de fecha/responsable. Recibe la fecha SIN formatear (tal como viene
+ * del backend) y la formatea una única vez aquí adentro:
+ *  - Con usuario:  "Creado por"        /  "Juan Pérez · 12/01/2026"
+ *  - Sin usuario:  "Recepcionado"      /  "12/01/2026"
+ */
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun InfoDateChip(info: FechaInfo, modifier: Modifier = Modifier) {
+    val fechaFormateada = OtherOperarions().formatFechaBaseDatos(info.fecha)
+    val usuarioTexto = info.usuario?.let { "${it.nombre_1} ${it.apellido_1}" }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = if (usuarioTexto != null) "${info.label} por" else info.label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            Text(
+                text = if (usuarioTexto != null) "$usuarioTexto · $fechaFormateada" else fechaFormateada,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+            )
         }
     }
 }

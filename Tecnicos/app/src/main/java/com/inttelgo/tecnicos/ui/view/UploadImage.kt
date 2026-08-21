@@ -42,6 +42,7 @@ import com.inttelgo.tecnicos.components.SingleFotoInstaPreview
 import com.inttelgo.tecnicos.components.SingleMediaPreview
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.layout.Installation
+import com.inttelgo.tecnicos.layout.ObsProceso
 import com.inttelgo.tecnicos.layout.ObsTarea
 import com.inttelgo.tecnicos.layout.ObsTicket
 import com.inttelgo.tecnicos.logic.Model.Articulo
@@ -87,6 +88,16 @@ fun UploadImgScreen(id: String, type: String, context: Context, navigateToHome: 
 
             // Render different components based on type
             when {
+                type.contains("ProcesoObservacion", ignoreCase = true) -> {
+                    ObsProceso(
+                        id = id,
+                        context = context,
+                        navigateToUp = navigateToUp,
+                        modifier = Modifier.padding(innerPadding).padding( horizontal = 20.dp).fillMaxSize(),
+                        selectedPreviewUri,
+                        isCompressing
+                    )
+                }
                 type.contains("tarea", ignoreCase = true) -> {
                     ObsTarea(
                         id = id,

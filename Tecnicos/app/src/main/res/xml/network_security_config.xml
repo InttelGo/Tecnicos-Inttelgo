@@ -2,12 +2,12 @@
 <network-security-config>
     <!-- Configuración para desarrollo local -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.1.53</domain>
+        <domain includeSubdomains="true">192.168.1.23</domain>
     </domain-config>
     
     <!-- Configuración para internetdedicado.com.co con certificado expirado (SOLO DESARROLLO) -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">internetdedicado.com.co</domain>
+        <domain includeSubdomains="true">api.inttelgo.com</domain>
         <trust-anchors>
             <!-- Permite certificados no válidos (solo para desarrollo) -->
             <certificates src="system" />

@@ -1,5 +1,6 @@
 package com.inttelgo.tecnicos.layout
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -11,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,27 +22,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,8 +43,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,58 +63,111 @@ import androidx.compose.ui.unit.sp
 import com.inttelgo.tecnicos.R
 import com.inttelgo.tecnicos.components.AnimatedIcon
 import com.inttelgo.tecnicos.components.EmptyStateCard
+import com.inttelgo.tecnicos.components.FechaInfo
+import com.inttelgo.tecnicos.components.InfoDateChip
 import com.inttelgo.tecnicos.components.InfoRow
 import com.inttelgo.tecnicos.components.ModernDialog
 import com.inttelgo.tecnicos.components.ObservationBox
 import com.inttelgo.tecnicos.components.PhoneCard
 import com.inttelgo.tecnicos.components.SectionTitle
+import com.inttelgo.tecnicos.components.estadoLabel
 import com.inttelgo.tecnicos.components.rememberNetworkConnectivityState
 import com.inttelgo.tecnicos.logic.Model.DialogType
-import com.inttelgo.tecnicos.logic.Model.EstadoInstalacion
 import com.inttelgo.tecnicos.logic.Model.Filter
 import com.inttelgo.tecnicos.logic.Model.Proceso
 import com.inttelgo.tecnicos.logic.Model.Sorting
-import com.inttelgo.tecnicos.logic.Model.Usuario
-import com.inttelgo.tecnicos.logic.Model.updateInstallationBody
+import com.inttelgo.tecnicos.logic.Model.assignedToUserFilter
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
-import com.inttelgo.tecnicos.logic.process.OtherOperarions
 import com.inttelgo.tecnicos.viewmodel.ProcesoViewModel
+import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+
+private enum class InstallationDayFilter(val label: String, val dayOffset: Long) {
+    YESTERDAY("Ayer", -1),
+    TODAY("Hoy", 0),
+    TOMORROW("Mañana", 1),
+    TWO_DAYS_AGO("Hace 2 días", -2)
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun installationDateForOffset(dayOffset: Long): String {
+    return LocalDate.now(ZoneId.of("America/Bogota"))
+        .plusDays(dayOffset)
+        .format(DateTimeFormatter.ISO_LOCAL_DATE) // yyyy-MM-dd
+}
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Proceso(
-    navigateToUploadImage: (id: String, type: String) -> Unit,
+    navigateToInstalacion: (id: String) -> Unit,
     context: Context
 ) {
     val viewModel: ProcesoViewModel = remember { ProcesoViewModel() }
+    val userPreferences = remember { UserPreferences(context) }
     val procesos by viewModel.procesosData.collectAsState()
     val checkProcessData by viewModel.checkProcessData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isLoadingInstalacion by viewModel.isLoadingInstalacion.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
-    val filters = remember { mutableStateListOf(Filter("id_instalacion", "contains", "")) }
+    val selectedDayFilter = remember { mutableStateOf(InstallationDayFilter.TODAY) }
+    val filters = remember {
+        mutableStateListOf(
+            Filter(column = "id_estado", operator = "in", value = listOf("7", "8")),
+            Filter(column = "id_instalacion", operator = "contains", value = "", logic = "AND"),
+            Filter(
+                column = "installation_at",
+                operator = "equals",
+                value = installationDateForOffset(InstallationDayFilter.TODAY.dayOffset),
+                logic = "AND"
+            )
+        )
+    }
     val sorting = remember { listOf(Sorting("id_instalacion", true)) }
     val search = remember { mutableStateOf("") }
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
     val hasInternetConnection = rememberNetworkConnectivityState(context)
-    val user = UserPreferences(context).getUser()
 
-    LaunchedEffect(search.value) {
+    LaunchedEffect(search.value, selectedDayFilter.value) {
         if (hasInternetConnection.value) {
-            val updatedFilters = filters.map { filter ->
-                if (filter.column == "id_instalacion") {
-                    filter.copy(
-                        value = search.value,
-                        operator = if (search.value.length > 3) "equals" else "contains"
-                    )
-                } else {
-                    filter
-                }
-            }
+            val userId = userPreferences.getUser()?.id
+            if (userId == null) return@LaunchedEffect
+
+            val installationDate = installationDateForOffset(selectedDayFilter.value.dayOffset)
+            val updatedFilters = mutableListOf<Filter>()
+
+            // 1) Estados abiertos (siempre aplica, también para asistente)
+            updatedFilters.add(
+                Filter(
+                    column = "id_estado",
+                    operator = "in",
+                    value = listOf("7", "8")
+                )
+            )
+
+            // 2) Asignado como operador O asistente (grupo OR)
+            updatedFilters.add(assignedToUserFilter(userId))
+
+            // 3) Búsqueda por id
+            updatedFilters.add(
+                Filter(
+                    column = "id_instalacion",
+                    operator = if (search.value.length > 3) "equals" else "contains",
+                    value = search.value,
+                    logic = "AND"
+                )
+            )
+
+            // 4) Fecha de instalación
+            updatedFilters.add(
+                Filter(
+                    column = "installation_at",
+                    operator = "equals",
+                    value = installationDate,
+                    logic = "AND"
+                )
+            )
             filters.clear()
             filters.addAll(updatedFilters)
 
@@ -139,23 +183,21 @@ fun Proceso(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.primaryContainer)
         ) {
-            // Header con título y estadísticas
+            // Header: búsqueda + filtro por fecha de instalación
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 4.dp
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Campo de búsqueda estilo Facebook
                     Surface(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .height(40.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceVariant
@@ -193,7 +235,6 @@ fun Proceso(
                                     innerTextField()
                                 }
                             )
-                            // Botón limpiar (solo visible si hay texto)
                             AnimatedVisibility(visible = search.value.isNotEmpty()) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
@@ -202,6 +243,41 @@ fun Proceso(
                                         .size(16.dp)
                                         .clickable { search.value = "" },
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp)
+                    ) {
+                        items(InstallationDayFilter.entries.toList()) { dayFilter ->
+                            val selected = selectedDayFilter.value == dayFilter
+                            Surface(
+                                modifier = Modifier.clickable {
+                                    selectedDayFilter.value = dayFilter
+                                },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            ) {
+                                Text(
+                                    text = dayFilter.label,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.onPrimary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                        textAlign = TextAlign.Center
+                                    )
                                 )
                             }
                         }
@@ -246,16 +322,10 @@ fun Proceso(
                     checkProcessData && !procesos.isNullOrEmpty() -> {
                         ProcessList(
                             procesos = procesos!!,
-                            onInitProcess = { proceso ->
-                                val zoneId = ZoneId.of("America/Bogota")
-                                val bogotaTime = ZonedDateTime.now(zoneId)
-                                val fechaIni = bogotaTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                                Log.d("ProcesoViewModel", "prueba de cambio")
-                                viewModel.update(
-                                    proceso,
-                                    updateInstallationBody(null, null, fechaIni, 8, null, user?.id),
-                                    navigateToUploadImage)
-
+                            onViewMore = { proceso ->
+                                proceso.id?.let { id ->
+                                    navigateToInstalacion(id.toString())
+                                }
                             },
                             onLoadMore = {
                                 LoadMoreTrigger(viewModel, filters, sorting)
@@ -310,26 +380,28 @@ fun Proceso(
 
     // Diálogo de éxito
     successMessage?.let {
-        ModernDialog(
-            type = DialogType.SUCCESS,
-            message = it,
-            title = "¡Éxito!",
-            onCancel = {
-                viewModel.clearMessages()
-            },
-            onSuccess = {
-                viewModel.clearMessages()
-            },
-            cancelText = "Cerrar",
-            successText = "Continuar"
-        )
+        if(it.id=="finish"){
+            ModernDialog(
+                type = DialogType.SUCCESS,
+                message = it.message,
+                title = "¡Éxito!",
+                onCancel = {
+                    viewModel.clearMessages()
+                },
+                onSuccess = {
+                    viewModel.clearMessages()
+                },
+                cancelText = "Cerrar",
+                successText = "Continuar"
+            )
+        }
     }
 
     // Diálogo de error
     errorMessage?.let {
         ModernDialog(
             type = DialogType.ERROR,
-            message = it,
+            message = it.message,
             title = "Error",
             onCancel = {
                 viewModel.clearMessages()
@@ -424,10 +496,11 @@ private fun EmptyState(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun ProcessList(
     procesos: List<Proceso>,
-    onInitProcess: (Proceso) -> Unit,
+    onViewMore: (Proceso) -> Unit,
     onLoadMore: @Composable () -> Unit
 ) {
     LazyColumn(
@@ -436,9 +509,10 @@ private fun ProcessList(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(procesos) { proceso ->
-            CardProceso(proceso) {
-                onInitProcess(it)
-            }
+            CardProceso(
+                proceso = proceso,
+                onViewMore = onViewMore
+            )
         }
 
         item {
@@ -447,8 +521,14 @@ private fun ProcessList(
     }
 }
 
+@SuppressLint("UseKtx")
+@OptIn(ExperimentalLayoutApi::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) {
+private fun CardProceso(
+    proceso: Proceso,
+    onViewMore: (Proceso) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -465,54 +545,45 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
     ) {
         Column(
             modifier = Modifier
-                .padding(24.dp)
+                .padding(20.dp)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // ── Header: ID, Identificación y Estado ──────────────────────────
+
+            // ── Header: ID + Estado ──────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Text(
-                            text = "ID: ${proceso.id?.toString() ?: "N/A"}",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (proceso.estado?.id == 7)
-                        MaterialTheme.colorScheme.secondaryContainer
-                    else
-                        MaterialTheme.colorScheme.tertiaryContainer
+                    color = colorResource(id = R.color.info).copy(alpha = 0.1f)
                 ) {
                     Text(
-                        text = if (proceso.estado?.id == 7) "NUEVO" else "EN PROCESO",
+                        text = "ID: ${proceso.id?.toString() ?: "N/A"}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = colorResource(id = R.color.info),
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                val statusColor = Color(android.graphics.Color.parseColor(proceso.estado?.color))
+                Surface(shape = RoundedCornerShape(12.dp), color = statusColor.copy(alpha = 0.1f)) {
+                    Text(
+                        text = estadoLabel(proceso.estado),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (proceso.estado?.id == 7)
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            else
-                                MaterialTheme.colorScheme.onTertiaryContainer,
+                            color = statusColor,
                             fontWeight = FontWeight.Bold
                         )
                     )
                 }
             }
 
-            // ── Nombre ───────────────────────────────────────────────────────
+            // ── Identidad: Nombre ───────────────────────
             Text(
                 text = proceso.nombre?.takeIf { it.isNotBlank() } ?: "Nombre no disponible",
                 style = MaterialTheme.typography.headlineSmall.copy(
@@ -522,139 +593,136 @@ private fun CardProceso(proceso: Proceso, onInitProcess: (id: Proceso) -> Unit) 
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            proceso.identificacion?.takeIf { it.isNotBlank() }?.let { id ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Text(
-                        text = "# identificacion "+id,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-            }
-            Log.d("ProcesoView", proceso.toString())
-            // ── Fechas ───────────────────────────────────────────────────────
-            proceso.fecha_i?.let {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                SectionTitle(title = "Fecha Instalacion")
-                InfoRow(icon= R.drawable.ic_calendar_days, text = it )
-            }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // ── Teléfonos ────────────────────────────────────────────────────
+            // ── Contacto: Teléfonos + Correo ─────────────────────────────
             if (!proceso.telefonos.isNullOrBlank()) {
-                SectionTitle(icon = R.drawable.ic_phone,title = "Contactos")
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_phone, title = "Contacto")
                 val telefonos = try {
                     separarNumerosTelefonicos(proceso.telefonos)
                 } catch (e: Exception) {
+                    Log.e("ProcesoView", "Error al separar los números de teléfono", e)
                     emptyList()
                 }
-
                 if (telefonos.isNotEmpty()) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    LazyRow ( horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(telefonos) { numero -> PhoneCard(numero) }
                     }
-                } else {
-                    Text(
-                        text = proceso.telefonos,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
                 }
             }
 
-            // ── Dirección y Barrio ───────────────────────────────────────────
-            SectionTitle(icon = R.drawable.ic_map_pin, "Ubicacion")
-            Column (verticalArrangement = Arrangement.spacedBy(8.dp) ){
-                proceso.direccion?.let {InfoRow(icon = null, text = "Dirección: ${it}")}
-                proceso.condominio?.let {InfoRow(icon = null, text = "Condominio: ${it}")}
-                proceso.barrio?.descripcion?.let { InfoRow(icon = null, text = "Barrio: $it") }
+            // ── Ubicación ─────────────────────────────────────────────────
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionTitle(icon = R.drawable.ic_map_pin, title = "Ubicación")
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Column (
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    proceso.direccion?.let { direccion ->
+                        val texto = if (!proceso.condominio.isNullOrBlank()) {
+                            "$direccion, ${proceso.condominio}"
+                        } else {
+                            direccion
+                        }
+                        InfoRow(icon = null, text = texto)
+                    }
+                    proceso.barrio?.descripcion?.let {
+                        InfoRow(icon = null, text = "Barrio: $it")
+                    }
+                }
             }
+
+            // ── Plan ──────────────────────────────────────────────────────
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionTitle(icon = R.drawable.ic_notebook_text, title = "Plan")
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Row (
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    proceso.plan?.id?.let {
+                        Text(
+                            text = "$it MB",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                    proceso.tipo_plan?.descripcion?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                    proceso.tipo_servicio?.descripcion?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Solo Creado, Actualizado e Inicio tienen un usuario asociado
+            // (create_by, update_by). La asignación usa operator_by / assistant_by.
+            val fechasInfo = listOfNotNull(
+                proceso.installation_at?.takeIf { it.isNotBlank() }?.let { FechaInfo("Agendado", it, null) },
+            )
+            if (fechasInfo.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionTitle(icon = R.drawable.ic_info, title = "Información Adicional")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    fechasInfo.forEach { info ->
+                        InfoDateChip(info = info, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            // ── Plan ─────────────────────────────────────────────────────────
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = "Plan",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Text(
-                        text = buildString {
-                            proceso.plan?.let {append( "${it.id} MB " )}
-                            proceso.tipo_plan?.let { append(it.descripcion) }
-                            append(" ")
-                            append(proceso.tipo_servicio?.descripcion)
-                        },
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
+            SectionTitle(icon = R.drawable.ic_eye, title = "Observacion")
+            // ── Observación ───────────────────────────────────────────────
+            proceso.observacion?.descripcion?.let { ObservationBox(it) }
 
-
-
-            // ── Observación ──────────────────────────────────────────────────
-            proceso.observacion?.let { it -> ObservationBox(it.descripcion) }
-
-            // ── Usuarios ─────────────────────────────────────────────────────
-            proceso.usuario_creacion?.let{
-                InfoRow(icon = R.drawable.ic_circle_user_round, text = "Creado por: ${it.nombre_1} ${it.apellido_1}")
-            }
-
-            // ── Botón de acción ──────────────────────────────────────────────
-            val textButton = if (proceso.estado?.id == 7) "Iniciar Proceso" else "Continuar Proceso"
-
+            // ── Acciones ──────────────────────────────────────────────────
             Button(
-                onClick = { onInitProcess(proceso) },
+                onClick = { onViewMore(proceso) },
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    painter = painterResource( if (proceso.estado?.id == 7) R.drawable.ic_plus else R.drawable.ic_step_forward),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 2.dp
                 )
-                Spacer(Modifier.width(8.dp))
+            ) {
                 Text(
-                    text = textButton,
+                    text = "Ver más",
                     style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 )
             }
         }
     }
 }
-private fun separarNumerosTelefonicos(input: String): List<String> {
+
+fun separarNumerosTelefonicos(input: String): List<String> {
     val sinEspacios = input.replace("\\s".toRegex(), "")
     val numeros = mutableListOf<String>()
     var index = 0

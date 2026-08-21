@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inttelgo.tecnicos.logic.Model.LoginRequest
+import com.inttelgo.tecnicos.logic.notifications.FcmTokenManager
 import com.inttelgo.tecnicos.logic.persistence.UserPreferences
 import com.inttelgo.tecnicos.logic.repository.UsuarioRepository
 import com.inttelgo.tecnicos.network.RetrofitClient
@@ -48,6 +49,7 @@ class LoginViewModel (private val repository: UsuarioRepository = UsuarioReposit
                                     userPreferences.saveUser(it.data.usuario)
                                     userPreferences.saveToken(it.data.token) // Guardar token
                                     RetrofitClient.updateAuthToken(it.data.token, context)
+                                    FcmTokenManager.registerCurrentToken(context)
                                 }else{
                                     _errorMessage.value = it.message
                                 }
@@ -92,6 +94,7 @@ class LoginViewModel (private val repository: UsuarioRepository = UsuarioReposit
                                 userPreferences.saveUser(it.data.usuario)
                                 userPreferences.saveToken(it.data.token)
                                 RetrofitClient.updateAuthToken(it.data.token, context)
+                                FcmTokenManager.registerCurrentToken(context)
                                 navigateToHome()
                             }else {
                                 userPreferences.clearUser()

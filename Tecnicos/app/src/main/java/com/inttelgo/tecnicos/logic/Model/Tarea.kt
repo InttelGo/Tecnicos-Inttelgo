@@ -10,13 +10,15 @@ data class Tarea(
     val fecha_edicion: String = "",
     val fecha_habil: String ="",
     val fecha_finalizacion: String = "",
+    val reserved_at: String = "",
     val cuenta: Cuenta? = null,
     val tipo: TipoTarea? = null,
     val tipo_area: String? = null,
     val estado: EstadoTarea? = null,
     val usuarioCreacion: Usuario? = null,
     val usuarioEdicion: Usuario? = null,
-    val tecnico: Usuario? = null,
+    val operator_by: Usuario? = null,
+    val assistant_by: Usuario? = null,
     val cliente: Cliente? = null
 )
 

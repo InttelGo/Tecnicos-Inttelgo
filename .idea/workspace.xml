@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="1a45a10f-108d-4d8b-8ce9-1e09980c5ba4" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/Model/Message.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/remote_conection_icon.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/wan_icon.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/components/Views.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/components/Views.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Installation.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Installation.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/ObsTarea.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/ObsTarea.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/ObsTicket.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/ObsTicket.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Proceso.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Proceso.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Soporte.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Soporte.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Tareas.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/layout/Tareas.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/Model/Proceso.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/Model/Proceso.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/Model/TipoTarea.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/Model/TipoTarea.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/repository/ProcesoRepository.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/repository/ProcesoRepository.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/repository/SoporteRepository.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/repository/SoporteRepository.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/repository/TareaRepository.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/logic/repository/TareaRepository.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/network/ApiService.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/network/ApiService.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/network/RetrofitClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/network/RetrofitClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/viewmodel/ProcesoViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/viewmodel/ProcesoViewModel.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/viewmodel/SoporteViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/viewmodel/SoporteViewModel.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/viewmodel/TareaViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/java/com/inttelgo/tecnicos/viewmodel/TareaViewModel.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_falla_nodo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_lentitud.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_otro.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_pon_rojo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_remota.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_traslado.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/drawable/icon_wan.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tecnicos/app/src/main/res/xml/network_security_config.xml" beforeDir="false" afterPath="$PROJECT_DIR$/Tecnicos/app/src/main/res/xml/network_security_config.xml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 2,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3ES0f613kd3hDWeHvS8KE9Jv9u8" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "feature/viewmodel",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/kotlin_proyects/Tecnicos-v2",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1a45a10f-108d-4d8b-8ce9-1e09980c5ba4" name="Changes" comment="" />
+      <created>1780156765579</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1780156765579</updated>
+      <workItem from="1780158030470" duration="45000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

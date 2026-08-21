@@ -5,8 +5,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Filter(
-    var column: String = "",
-    var operator: String = "contains",
-    @Contextual var value: Any = "",
-    val logic: String? = null
+    var column: String? = null,
+    var operator: String? = null,
+    @Contextual var value: Any? = null,
+    val logic: String? = null,
+    /** Grupo anidado: (filtro1 OR filtro2) AND ... */
+    val filters: List<Filter>? = null
 )
